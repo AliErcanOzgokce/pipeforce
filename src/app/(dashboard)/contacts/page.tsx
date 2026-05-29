@@ -8,7 +8,6 @@ import { getCompanies } from "@/lib/api/companies"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
   Table,
   TableBody,
@@ -40,14 +39,11 @@ type Company = Awaited<ReturnType<typeof getCompanies>>[number]
 
 const STATUS_OPTIONS = ["PROSPECT", "ACTIVE", "CUSTOMER", "CHURNED"] as const
 
-const statusVariant: Record<
-  string,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  PROSPECT: "outline",
-  ACTIVE: "default",
-  CUSTOMER: "secondary",
-  CHURNED: "destructive",
+const statusColors: Record<string, { bg: string; text: string }> = {
+  PROSPECT: { bg: "bg-blue-50", text: "text-blue-700" },
+  ACTIVE: { bg: "bg-green-50", text: "text-green-700" },
+  CUSTOMER: { bg: "bg-purple-50", text: "text-purple-700" },
+  CHURNED: { bg: "bg-stone-100", text: "text-stone-600" },
 }
 
 export default function ContactsPage() {
@@ -131,16 +127,39 @@ export default function ContactsPage() {
 
   if (!isLoaded || loading) {
     return (
-      <div data-arcy="contacts-page" className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading contacts...</p>
+      <div data-arcy="contacts-page" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="skeleton h-8 w-32 rounded-md" />
+            <div className="skeleton mt-2 h-4 w-48 rounded-md" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="skeleton h-9 w-64 rounded-md" />
+            <div className="skeleton h-9 w-28 rounded-md" />
+          </div>
+        </div>
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="skeleton h-4 w-32 rounded" />
+                <div className="skeleton h-4 w-40 rounded" />
+                <div className="skeleton h-4 w-28 rounded" />
+                <div className="skeleton h-5 w-16 rounded-full" />
+                <div className="skeleton h-4 w-24 rounded" />
+                <div className="skeleton h-4 w-20 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!organizationId) {
     return (
-      <div data-arcy="contacts-page" className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">
+      <div data-arcy="contacts-page" className="flex flex-col items-center justify-center py-24 text-center">
+        <p className="text-muted-foreground text-[15px]">
           Please sign in and select an organization.
         </p>
       </div>
@@ -153,21 +172,23 @@ export default function ContactsPage() {
     <div data-arcy="contacts-page" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Contacts</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight">
+            Contacts
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
             {contacts.length} contact{contacts.length !== 1 ? "s" : ""} in your
             organization
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative w-64">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               data-arcy="contacts-search-input"
               placeholder="Search contacts..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 w-64"
+              className="pl-8 w-full rounded-md"
             />
           </div>
           {canEdit && (
@@ -291,52 +312,66 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border bg-card shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Created</TableHead>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Name</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Email</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Phone</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Company</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Created</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {contacts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    {search ? "No contacts match your search." : "No contacts yet."}
-                  </p>
+                <TableCell colSpan={6} className="text-center py-16">
+                  <div className="flex flex-col items-center gap-3">
+                    <p className="text-muted-foreground text-[15px]">
+                      {search ? "No contacts match your search." : "No contacts yet."}
+                    </p>
+                    {!search && canEdit && (
+                      <Button
+                        size="sm"
+                        onClick={() => setDialogOpen(true)}
+                      >
+                        <Plus className="mr-1 size-4" />
+                        Create your first contact
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
-              contacts.map((contact) => (
-                <TableRow
-                  key={contact.id}
-                  data-arcy={`contact-row-${contact.id}`}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/contacts/${contact.id}`)}
-                >
-                  <TableCell className="font-medium">
-                    {contact.firstName} {contact.lastName}
-                  </TableCell>
-                  <TableCell>{contact.email ?? "—"}</TableCell>
-                  <TableCell>{contact.phone ?? "—"}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant[contact.status] ?? "outline"}>
-                      {contact.status.charAt(0) +
-                        contact.status.slice(1).toLowerCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{contact.company?.name ?? "—"}</TableCell>
-                  <TableCell>
-                    {new Date(contact.createdAt).toLocaleDateString()}
-                  </TableCell>
-                </TableRow>
-              ))
+              contacts.map((contact) => {
+                const colors = statusColors[contact.status] ?? { bg: "bg-stone-100", text: "text-stone-600" }
+                return (
+                  <TableRow
+                    key={contact.id}
+                    data-arcy={`contact-row-${contact.id}`}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors duration-100"
+                    onClick={() => router.push(`/contacts/${contact.id}`)}
+                  >
+                    <TableCell className="font-medium text-[15px]">
+                      {contact.firstName} {contact.lastName}
+                    </TableCell>
+                    <TableCell className="text-[15px]">{contact.email ?? "\u2014"}</TableCell>
+                    <TableCell className="text-[15px]">{contact.phone ?? "\u2014"}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}>
+                        {contact.status.charAt(0) +
+                          contact.status.slice(1).toLowerCase()}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-[15px]">{contact.company?.name ?? "\u2014"}</TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
+                      {new Date(contact.createdAt).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

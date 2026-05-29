@@ -17,7 +17,6 @@ import { getNotes, createNote, deleteNote } from "@/lib/api/notes"
 import { DealForm } from "@/components/deals/deal-form"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -43,7 +42,6 @@ import {
   ArrowLeft,
   Building2,
   CalendarDays,
-  DollarSign,
   Edit,
   Mail,
   Phone as PhoneIcon,
@@ -99,20 +97,37 @@ function getInitials(name: string | null) {
     .slice(0, 2)
 }
 
-function activityTypeColor(type: string) {
+function activityTypeColor(type: string): string {
   switch (type) {
     case "CALL":
-      return "default"
+      return "#16a34a"
     case "EMAIL":
-      return "secondary"
+      return "#3b82f6"
     case "MEETING":
-      return "outline"
+      return "#8b5cf6"
     case "TASK":
-      return "destructive"
+      return "#f59e0b"
     case "NOTE":
-      return "secondary"
+      return "#78716c"
     default:
-      return "default"
+      return "#78716c"
+  }
+}
+
+function activityTypeBg(type: string): string {
+  switch (type) {
+    case "CALL":
+      return "bg-green-50 dark:bg-green-950"
+    case "EMAIL":
+      return "bg-blue-50 dark:bg-blue-950"
+    case "MEETING":
+      return "bg-violet-50 dark:bg-violet-950"
+    case "TASK":
+      return "bg-amber-50 dark:bg-amber-950"
+    case "NOTE":
+      return "bg-stone-100 dark:bg-stone-900"
+    default:
+      return "bg-muted"
   }
 }
 
@@ -305,11 +320,21 @@ export default function DealDetailPage() {
 
   if (!isLoaded || loading) {
     return (
-      <div
-        data-arcy="deal-detail-page"
-        className="flex items-center justify-center py-12"
-      >
-        <p className="text-muted-foreground">Loading deal...</p>
+      <div data-arcy="deal-detail-page" className="space-y-6">
+        <div className="h-8 w-28 animate-pulse rounded bg-muted" />
+        <div className="space-y-3">
+          <div className="h-9 w-64 animate-pulse rounded bg-muted" />
+          <div className="flex gap-4">
+            <div className="h-6 w-32 animate-pulse rounded bg-muted" />
+            <div className="h-6 w-44 animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+        <Separator />
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="h-48 animate-pulse rounded-lg border bg-muted" />
+          <div className="h-48 animate-pulse rounded-lg border bg-muted" />
+        </div>
+        <div className="h-64 animate-pulse rounded-lg border bg-muted" />
       </div>
     )
   }
@@ -337,6 +362,8 @@ export default function DealDetailPage() {
       </div>
     )
   }
+
+  const currentStage = stages.find((s) => s.id === deal.stageId)
 
   const serializedDeal = {
     id: deal.id,
@@ -368,18 +395,20 @@ export default function DealDetailPage() {
         variant="ghost"
         size="sm"
         onClick={() => router.push("/deals")}
+        className="gap-1.5 text-muted-foreground transition-colors duration-150 hover:text-foreground"
       >
-        <ArrowLeft className="mr-1 size-4" />
+        <ArrowLeft className="size-4" />
         Back to Deals
       </Button>
 
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-bold tracking-tight">{deal.title}</h2>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 text-lg text-muted-foreground">
-              <DollarSign className="size-4" />
+        <div className="space-y-3">
+          <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight">
+            {deal.title}
+          </h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="font-mono text-xl text-green-600">
               {formatCurrency(Number(deal.value), deal.currency)}
             </span>
             <Select
@@ -391,7 +420,17 @@ export default function DealDetailPage() {
                 data-arcy="deal-stage-select"
                 className="h-8 w-[180px]"
               >
-                <SelectValue placeholder="Select stage" />
+                <SelectValue placeholder="Select stage">
+                  {currentStage && (
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="inline-block size-2.5 rounded-full"
+                        style={{ backgroundColor: currentStage.color }}
+                      />
+                      {currentStage.name}
+                    </span>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {stages.map((s) => (
@@ -433,7 +472,7 @@ export default function DealDetailPage() {
               deal={serializedDeal}
               trigger={
                 <Button data-arcy="edit-deal-button" variant="outline" size="sm">
-                  <Edit className="mr-1 size-4" />
+                  <Edit className="mr-1.5 size-4" />
                   Edit
                 </Button>
               }
@@ -446,7 +485,7 @@ export default function DealDetailPage() {
               disabled={deleting}
               onClick={handleDelete}
             >
-              <Trash2 className="mr-1 size-4" />
+              <Trash2 className="mr-1.5 size-4" />
               {deleting ? "Deleting..." : "Delete"}
             </Button>
           </div>
@@ -455,100 +494,101 @@ export default function DealDetailPage() {
 
       <Separator />
 
-      {/* Info section */}
+      {/* Info section - 2 column grid with labeled fields */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Deal Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-3">
-              <User className="mt-0.5 size-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Contact</p>
-                <p className="text-sm font-medium">
+        <div className="rounded-lg border bg-card p-6 shadow-sm">
+          <h3 className="text-[16px] font-semibold">Deal Information</h3>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Contact
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <User className="size-4 text-muted-foreground" />
+                <p className="text-[15px] font-medium">
                   {deal.contact
                     ? `${deal.contact.firstName} ${deal.contact.lastName}`
-                    : "No contact assigned"}
+                    : "Not assigned"}
                 </p>
-                {deal.contact?.email && (
-                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Mail className="size-3" />
-                    {deal.contact.email}
-                  </p>
-                )}
-                {deal.contact?.phone && (
-                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <PhoneIcon className="size-3" />
-                    {deal.contact.phone}
-                  </p>
-                )}
               </div>
+              {deal.contact?.email && (
+                <p className="mt-1 flex items-center gap-1.5 pl-6 text-[12px] text-muted-foreground">
+                  <Mail className="size-3" />
+                  {deal.contact.email}
+                </p>
+              )}
+              {deal.contact?.phone && (
+                <p className="mt-0.5 flex items-center gap-1.5 pl-6 text-[12px] text-muted-foreground">
+                  <PhoneIcon className="size-3" />
+                  {deal.contact.phone}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-start gap-3">
-              <Building2 className="mt-0.5 size-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Company</p>
-                <p className="text-sm font-medium">
-                  {deal.company?.name ?? "No company assigned"}
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Company
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <Building2 className="size-4 text-muted-foreground" />
+                <p className="text-[15px] font-medium">
+                  {deal.company?.name ?? "Not assigned"}
                 </p>
-                {deal.company?.industry && (
-                  <p className="text-xs text-muted-foreground">
-                    {deal.company.industry}
-                  </p>
-                )}
               </div>
+              {deal.company?.industry && (
+                <p className="mt-1 pl-6 text-[12px] text-muted-foreground">
+                  {deal.company.industry}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-start gap-3">
-              <CalendarDays className="mt-0.5 size-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Expected Close Date
-                </p>
-                <p className="text-sm font-medium">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Expected Close
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <CalendarDays className="size-4 text-muted-foreground" />
+                <p className="text-[15px] font-medium">
                   {deal.expectedCloseDate
                     ? formatDate(deal.expectedCloseDate)
                     : "Not set"}
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Owner &amp; Description</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Avatar size="default">
-                {deal.owner.imageUrl && (
-                  <AvatarImage src={deal.owner.imageUrl} />
-                )}
-                <AvatarFallback>{getInitials(deal.owner.name)}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-xs text-muted-foreground">Owner</p>
-                <p className="text-sm font-medium">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Owner
+              </p>
+              <div className="mt-1.5 flex items-center gap-2.5">
+                <Avatar size="default">
+                  {deal.owner.imageUrl && (
+                    <AvatarImage src={deal.owner.imageUrl} />
+                  )}
+                  <AvatarFallback>{getInitials(deal.owner.name)}</AvatarFallback>
+                </Avatar>
+                <p className="text-[15px] font-medium">
                   {deal.owner.name ?? deal.owner.email}
                 </p>
               </div>
             </div>
+          </div>
+        </div>
 
-            {deal.description && (
-              <div>
-                <p className="mb-1 text-xs text-muted-foreground">
-                  Description
-                </p>
-                <p className="text-sm whitespace-pre-wrap">
-                  {deal.description}
-                </p>
-              </div>
+        <div className="rounded-lg border bg-card p-6 shadow-sm">
+          <h3 className="text-[16px] font-semibold">Description</h3>
+          <div className="mt-5">
+            {deal.description ? (
+              <p className="text-[15px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                {deal.description}
+              </p>
+            ) : (
+              <p className="text-[13px] text-muted-foreground">
+                No description added.
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Activity & Notes Tabs */}
@@ -563,7 +603,7 @@ export default function DealDetailPage() {
         </TabsList>
 
         {/* Activities Tab */}
-        <TabsContent value="activities" className="mt-4 space-y-4">
+        <TabsContent value="activities" className="mt-6 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Select value={activityFilter} onValueChange={(v) => v && setActivityFilter(v)}>
               <SelectTrigger
@@ -675,67 +715,82 @@ export default function DealDetailPage() {
           </div>
 
           {activities.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-12 text-center text-[13px] text-muted-foreground">
               No activities yet.
             </p>
           ) : (
             <div className="space-y-3">
               {activities.map((activity) => (
-                <Card key={activity.id} size="sm">
-                  <CardContent>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            data-arcy={`activity-badge-${activity.id}`}
-                            variant={activityTypeColor(activity.type) as "default" | "secondary" | "outline" | "destructive"}
-                          >
-                            {activity.type}
-                          </Badge>
-                          <span className="text-sm font-medium">
-                            {activity.title}
-                          </span>
-                        </div>
-                        {activity.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {activity.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>
-                            by {activity.createdBy?.name ?? "Unknown"}
-                          </span>
-                          <span>{formatDateTime(activity.createdAt)}</span>
-                          {activity.dueDate && (
-                            <span>Due: {formatDate(activity.dueDate)}</span>
-                          )}
-                        </div>
-                      </div>
-                      {canEdit && (
-                        <Button
-                          data-arcy={`delete-activity-${activity.id}`}
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleDeleteActivity(activity.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
+                <div
+                  key={activity.id}
+                  className="flex gap-4 rounded-lg border bg-card p-4 shadow-sm"
+                >
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${activityTypeBg(activity.type)}`}
+                  >
+                    <span
+                      className="text-xs font-bold"
+                      style={{ color: activityTypeColor(activity.type) }}
+                    >
+                      {activity.type.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[15px] font-medium">
+                        {activity.title}
+                      </span>
+                      <Badge
+                        data-arcy={`activity-badge-${activity.id}`}
+                        variant="outline"
+                        className="text-[11px]"
+                      >
+                        {activity.type.charAt(0) + activity.type.slice(1).toLowerCase()}
+                      </Badge>
+                    </div>
+                    {activity.description && (
+                      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+                        {activity.description}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
+                      <span>
+                        by {activity.createdBy?.name ?? "Unknown"}
+                      </span>
+                      <span className="text-border">|</span>
+                      <span>{formatDateTime(activity.createdAt)}</span>
+                      {activity.dueDate && (
+                        <>
+                          <span className="text-border">|</span>
+                          <span>Due: {formatDate(activity.dueDate)}</span>
+                        </>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  {canEdit && (
+                    <Button
+                      data-arcy={`delete-activity-${activity.id}`}
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleDeleteActivity(activity.id)}
+                      className="shrink-0 text-muted-foreground transition-colors duration-150 hover:text-red-600"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
           )}
         </TabsContent>
 
         {/* Notes Tab */}
-        <TabsContent value="notes" className="mt-4 space-y-4">
+        <TabsContent value="notes" className="mt-6 space-y-4">
           {canEdit && (
             <form
               data-arcy="add-note-form"
               onSubmit={handleAddNote}
-              className="flex gap-2"
+              className="flex gap-3"
             >
               <Textarea
                 data-arcy="note-content-input"
@@ -758,36 +813,38 @@ export default function DealDetailPage() {
           )}
 
           {notes.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-12 text-center text-[13px] text-muted-foreground">
               No notes yet.
             </p>
           ) : (
             <div className="space-y-3">
               {notes.map((note) => (
-                <Card key={note.id} size="sm">
-                  <CardContent>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm whitespace-pre-wrap">
-                          {note.content}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateTime(note.createdAt)}
-                        </p>
-                      </div>
-                      {canEdit && (
-                        <Button
-                          data-arcy={`delete-note-${note.id}`}
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleDeleteNote(note.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      )}
+                <div
+                  key={note.id}
+                  className="rounded-lg border bg-card p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap">
+                        {note.content}
+                      </p>
+                      <p className="text-[12px] text-muted-foreground">
+                        {formatDateTime(note.createdAt)}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
+                    {canEdit && (
+                      <Button
+                        data-arcy={`delete-note-${note.id}`}
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="shrink-0 text-muted-foreground transition-colors duration-150 hover:text-red-600"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           )}

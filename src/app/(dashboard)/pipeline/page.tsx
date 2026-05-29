@@ -35,7 +35,6 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Card, CardContent } from "@/components/ui/card"
 import { Plus, GripVertical, Pencil, Trash2 } from "lucide-react"
 
 interface StageData {
@@ -67,8 +66,9 @@ function SortableStageItem({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition ?? "transform 200ms ease-in-out",
     opacity: isDragging ? 0.5 : 1,
+    scale: isDragging ? "1.02" : "1",
   }
 
   return (
@@ -76,23 +76,23 @@ function SortableStageItem({
       ref={setNodeRef}
       style={style}
       data-arcy={`stage-item-${stage.id}`}
-      className="flex items-center gap-3 rounded-lg border bg-card p-3"
+      className="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       {canEdit && (
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+          className="cursor-grab touch-none text-muted-foreground transition-colors duration-150 hover:text-foreground"
           data-arcy={`stage-drag-handle-${stage.id}`}
         >
-          <GripVertical className="size-4" />
+          <GripVertical className="size-5" />
         </button>
       )}
       <div
-        className="size-4 shrink-0 rounded"
+        className="h-6 w-6 shrink-0 rounded"
         style={{ backgroundColor: stage.color }}
       />
-      <span className="flex-1 font-medium">{stage.name}</span>
+      <span className="flex-1 text-[15px] font-semibold">{stage.name}</span>
       {canEdit && (
         <div className="flex items-center gap-1">
           <Button
@@ -100,6 +100,7 @@ function SortableStageItem({
             size="icon-sm"
             data-arcy={`edit-stage-${stage.id}`}
             onClick={() => onEdit(stage)}
+            className="text-muted-foreground transition-colors duration-150 hover:text-foreground"
           >
             <Pencil className="size-4" />
           </Button>
@@ -108,6 +109,7 @@ function SortableStageItem({
             size="icon-sm"
             data-arcy={`delete-stage-${stage.id}`}
             onClick={() => onDelete(stage.id)}
+            className="text-muted-foreground transition-colors duration-150 hover:text-red-600"
           >
             <Trash2 className="size-4" />
           </Button>
@@ -256,11 +258,19 @@ export default function PipelinePage() {
 
   if (!isLoaded || loading) {
     return (
-      <div
-        data-arcy="pipeline-page"
-        className="flex items-center justify-center py-12"
-      >
-        <p className="text-muted-foreground">Loading pipeline settings...</p>
+      <div data-arcy="pipeline-page" className="space-y-6">
+        <div className="space-y-1">
+          <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-72 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-16 animate-pulse rounded-lg border bg-muted"
+            />
+          ))}
+        </div>
       </div>
     )
   }
@@ -294,19 +304,19 @@ export default function PipelinePage() {
   return (
     <div data-arcy="pipeline-page" className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
+        <div className="space-y-1">
+          <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight">
             Pipeline Settings
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             Configure your pipeline stages. Drag to reorder.
           </p>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger
             render={
-              <Button data-arcy="add-stage-button">
-                <Plus className="mr-1 size-4" />
+              <Button data-arcy="add-stage-button" size="lg">
+                <Plus className="mr-2 size-4" />
                 Add Stage
               </Button>
             }
@@ -342,7 +352,7 @@ export default function PipelinePage() {
                     value={addColor}
                     onChange={(e) => setAddColor(e.target.value)}
                     placeholder="#6366f1"
-                    className="flex-1"
+                    className="flex-1 font-mono text-sm"
                   />
                 </div>
               </div>
@@ -392,7 +402,7 @@ export default function PipelinePage() {
                   value={editColor}
                   onChange={(e) => setEditColor(e.target.value)}
                   placeholder="#6366f1"
-                  className="flex-1"
+                  className="flex-1 font-mono text-sm"
                 />
               </div>
             </div>
@@ -410,38 +420,36 @@ export default function PipelinePage() {
       </Dialog>
 
       {/* Stages list with drag-and-drop */}
-      <Card>
-        <CardContent>
-          {stages.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">
-              No stages configured. Add your first stage to get started.
-            </p>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={stages.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div data-arcy="stages-list" className="space-y-2">
-                  {stages.map((stage) => (
-                    <SortableStageItem
-                      key={stage.id}
-                      stage={stage}
-                      canEdit={isAdmin}
-                      onEdit={openEdit}
-                      onDelete={handleDelete}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-        </CardContent>
-      </Card>
+      {stages.length === 0 ? (
+        <div className="rounded-lg border bg-card py-16 text-center shadow-sm">
+          <p className="text-[15px] text-muted-foreground">
+            No stages configured. Add your first stage to get started.
+          </p>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={stages.map((s) => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div data-arcy="stages-list" className="space-y-2">
+              {stages.map((stage) => (
+                <SortableStageItem
+                  key={stage.id}
+                  stage={stage}
+                  canEdit={isAdmin}
+                  onEdit={openEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
     </div>
   )
 }

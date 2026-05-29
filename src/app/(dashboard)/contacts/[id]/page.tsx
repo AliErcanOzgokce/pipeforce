@@ -12,7 +12,6 @@ import { getCompanies } from "@/lib/api/companies"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardContent,
@@ -50,14 +49,19 @@ type Company = Awaited<ReturnType<typeof getCompanies>>[number]
 
 const STATUS_OPTIONS = ["PROSPECT", "ACTIVE", "CUSTOMER", "CHURNED"] as const
 
-const statusVariant: Record<
-  string,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  PROSPECT: "outline",
-  ACTIVE: "default",
-  CUSTOMER: "secondary",
-  CHURNED: "destructive",
+const statusColors: Record<string, { bg: string; text: string }> = {
+  PROSPECT: { bg: "bg-blue-50", text: "text-blue-700" },
+  ACTIVE: { bg: "bg-green-50", text: "text-green-700" },
+  CUSTOMER: { bg: "bg-purple-50", text: "text-purple-700" },
+  CHURNED: { bg: "bg-stone-100", text: "text-stone-600" },
+}
+
+const activityTypeColors: Record<string, { bg: string; text: string }> = {
+  CALL: { bg: "bg-green-100", text: "text-green-700" },
+  EMAIL: { bg: "bg-blue-100", text: "text-blue-700" },
+  MEETING: { bg: "bg-purple-100", text: "text-purple-700" },
+  TASK: { bg: "bg-amber-100", text: "text-amber-700" },
+  NOTE: { bg: "bg-gray-100", text: "text-gray-700" },
 }
 
 export default function ContactDetailPage() {
@@ -154,21 +158,55 @@ export default function ContactDetailPage() {
 
   if (!isLoaded || loading) {
     return (
-      <div data-arcy="contact-detail-page" className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading contact...</p>
+      <div data-arcy="contact-detail-page" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="skeleton h-8 w-8 rounded-md" />
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="skeleton h-8 w-48 rounded-md" />
+                <div className="skeleton h-5 w-16 rounded-full" />
+              </div>
+              <div className="skeleton mt-2 h-4 w-56 rounded-md" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="skeleton h-9 w-20 rounded-md" />
+            <div className="skeleton h-9 w-20 rounded-md" />
+          </div>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="bg-card border rounded-lg shadow-sm p-6 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i}>
+                <div className="skeleton h-3 w-16 rounded mb-1" />
+                <div className="skeleton h-4 w-32 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!organizationId || !contact) {
     return (
-      <div data-arcy="contact-detail-page" className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Contact not found.</p>
+      <div data-arcy="contact-detail-page" className="flex flex-col items-center justify-center py-24 text-center">
+        <p className="text-muted-foreground text-[15px]">Contact not found.</p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => router.push("/contacts")}
+        >
+          <ArrowLeft className="mr-1 size-4" />
+          Back to Contacts
+        </Button>
       </div>
     )
   }
 
   const canEdit = role !== "viewer"
+  const contactStatusColors = statusColors[contact.status] ?? { bg: "bg-stone-100", text: "text-stone-600" }
 
   return (
     <div data-arcy="contact-detail-page" className="space-y-6">
@@ -185,15 +223,15 @@ export default function ContactDetailPage() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold tracking-tight">
+              <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight">
                 {contact.firstName} {contact.lastName}
               </h2>
-              <Badge variant={statusVariant[contact.status] ?? "outline"}>
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${contactStatusColors.bg} ${contactStatusColors.text}`}>
                 {contact.status.charAt(0) +
                   contact.status.slice(1).toLowerCase()}
-              </Badge>
+              </span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               Contact details and related records
             </p>
           </div>
@@ -361,15 +399,15 @@ export default function ContactDetailPage() {
 
       {/* Contact Info */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card className="bg-card border rounded-lg shadow-sm">
           <CardHeader>
-            <CardTitle>Contact Information</CardTitle>
+            <CardTitle className="text-[16px] font-semibold">Contact Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="space-y-3">
+            <dl className="space-y-4">
               <div>
-                <dt className="text-sm text-muted-foreground">Email</dt>
-                <dd className="text-sm font-medium">
+                <dt className="text-[12px] uppercase tracking-[0.04em] font-medium text-muted-foreground">Email</dt>
+                <dd className="text-[15px] mt-0.5">
                   {contact.email ? (
                     <a
                       href={`mailto:${contact.email}`}
@@ -378,26 +416,26 @@ export default function ContactDetailPage() {
                       {contact.email}
                     </a>
                   ) : (
-                    "—"
+                    "\u2014"
                   )}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-muted-foreground">Phone</dt>
-                <dd className="text-sm font-medium">{contact.phone ?? "—"}</dd>
+                <dt className="text-[12px] uppercase tracking-[0.04em] font-medium text-muted-foreground">Phone</dt>
+                <dd className="text-[15px] mt-0.5">{contact.phone ?? "\u2014"}</dd>
               </div>
               <div>
-                <dt className="text-sm text-muted-foreground">Status</dt>
-                <dd className="text-sm">
-                  <Badge variant={statusVariant[contact.status] ?? "outline"}>
+                <dt className="text-[12px] uppercase tracking-[0.04em] font-medium text-muted-foreground">Status</dt>
+                <dd className="mt-1">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${contactStatusColors.bg} ${contactStatusColors.text}`}>
                     {contact.status.charAt(0) +
                       contact.status.slice(1).toLowerCase()}
-                  </Badge>
+                  </span>
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-muted-foreground">Company</dt>
-                <dd className="text-sm font-medium">
+                <dt className="text-[12px] uppercase tracking-[0.04em] font-medium text-muted-foreground">Company</dt>
+                <dd className="text-[15px] mt-0.5">
                   {contact.company ? (
                     <button
                       className="text-primary underline underline-offset-2"
@@ -409,13 +447,13 @@ export default function ContactDetailPage() {
                       {contact.company.name}
                     </button>
                   ) : (
-                    "—"
+                    "\u2014"
                   )}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm text-muted-foreground">Created</dt>
-                <dd className="text-sm font-medium">
+                <dt className="text-[12px] uppercase tracking-[0.04em] font-medium text-muted-foreground">Created</dt>
+                <dd className="text-[15px] mt-0.5">
                   {new Date(contact.createdAt).toLocaleDateString()}
                 </dd>
               </div>
@@ -425,26 +463,28 @@ export default function ContactDetailPage() {
       </div>
 
       {/* Related Deals */}
-      <Card>
+      <Card className="bg-card border rounded-lg shadow-sm">
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="text-[16px] font-semibold">
             Deals ({contact.deals.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {contact.deals.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              No deals associated with this contact.
-            </p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-[15px] text-muted-foreground">
+                No deals associated with this contact.
+              </p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Created</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Title</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Value</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Stage</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Owner</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -452,21 +492,23 @@ export default function ContactDetailPage() {
                   <TableRow
                     key={deal.id}
                     data-arcy={`contact-deal-row-${deal.id}`}
-                    className="cursor-pointer"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors duration-100"
                     onClick={() => router.push(`/deals`)}
                   >
-                    <TableCell className="font-medium">{deal.title}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-[15px]">{deal.title}</TableCell>
+                    <TableCell className="font-mono text-green-600">
                       {new Intl.NumberFormat("en-US", {
                         style: "currency",
                         currency: deal.currency,
                       }).format(Number(deal.value))}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{deal.stage.name}</Badge>
+                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
+                        {deal.stage.name}
+                      </span>
                     </TableCell>
-                    <TableCell>{deal.owner.name ?? "—"}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-[15px]">{deal.owner.name ?? "\u2014"}</TableCell>
+                    <TableCell className="text-[13px] text-muted-foreground">
                       {new Date(deal.createdAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
@@ -478,50 +520,56 @@ export default function ContactDetailPage() {
       </Card>
 
       {/* Activities */}
-      <Card>
+      <Card className="bg-card border rounded-lg shadow-sm">
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="text-[16px] font-semibold">
             Activities ({contact.activities.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {contact.activities.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">
-              No activities recorded for this contact.
-            </p>
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-[15px] text-muted-foreground">
+                No activities recorded for this contact.
+              </p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Created By</TableHead>
-                  <TableHead>Date</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Type</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Title</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Created By</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contact.activities.map((activity) => (
-                  <TableRow
-                    key={activity.id}
-                    data-arcy={`contact-activity-row-${activity.id}`}
-                  >
-                    <TableCell>
-                      <Badge variant="outline">
-                        {activity.type.charAt(0) +
-                          activity.type.slice(1).toLowerCase()}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {activity.title}
-                    </TableCell>
-                    <TableCell>
-                      {activity.createdBy.name ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(activity.createdAt).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {contact.activities.map((activity) => {
+                  const typeColors = activityTypeColors[activity.type] ?? { bg: "bg-gray-100", text: "text-gray-700" }
+                  return (
+                    <TableRow
+                      key={activity.id}
+                      data-arcy={`contact-activity-row-${activity.id}`}
+                      className="hover:bg-muted/50 transition-colors duration-100"
+                    >
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${typeColors.bg} ${typeColors.text}`}>
+                          {activity.type.charAt(0) +
+                            activity.type.slice(1).toLowerCase()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium text-[15px]">
+                        {activity.title}
+                      </TableCell>
+                      <TableCell className="text-[15px]">
+                        {activity.createdBy.name ?? "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-[13px] text-muted-foreground">
+                        {new Date(activity.createdAt).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

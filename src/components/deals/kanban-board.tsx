@@ -3,14 +3,17 @@
 import { useCallback, useState } from "react"
 import {
   DndContext,
+  DragOverlay,
   DragOverEvent,
   DragEndEvent,
+  DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
   closestCorners,
 } from "@dnd-kit/core"
 import { KanbanColumn } from "./kanban-column"
+import { DealCard } from "./deal-card"
 import { updateDealStage } from "@/lib/api/deals"
 
 interface DealData {
@@ -53,6 +56,7 @@ function toColumnDeal(deal: DealData) {
 
 export function KanbanBoard({ deals: initialDeals, stages }: KanbanBoardProps) {
   const [deals, setDeals] = useState(initialDeals)
+  const [activeDealId, setActiveDealId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -67,6 +71,10 @@ export function KanbanBoard({ deals: initialDeals, stages }: KanbanBoardProps) {
     },
     [deals]
   )
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDealId(event.active.id as string)
+  }, [])
 
   const handleDragOver = useCallback(
     (event: DragOverEvent) => {
@@ -94,6 +102,8 @@ export function KanbanBoard({ deals: initialDeals, stages }: KanbanBoardProps) {
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      setActiveDealId(null)
+
       const { active, over } = event
       if (!over) return
 
@@ -122,11 +132,16 @@ export function KanbanBoard({ deals: initialDeals, stages }: KanbanBoardProps) {
     [deals, stages, findStageForDeal, initialDeals]
   )
 
+  const activeDeal = activeDealId
+    ? deals.find((d) => d.id === activeDealId)
+    : null
+
   return (
     <div data-arcy="kanban-board" className="flex gap-4 overflow-x-auto pb-4">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
@@ -136,15 +151,23 @@ export function KanbanBoard({ deals: initialDeals, stages }: KanbanBoardProps) {
             .map(toColumnDeal)
 
           return (
-            <KanbanColumn
-              key={stage.id}
-              stageId={stage.id}
-              stageName={stage.name}
-              stageColor={stage.color}
-              deals={stageDeals}
-            />
+            <div key={stage.id} className="min-w-[280px] w-[280px] flex-shrink-0">
+              <KanbanColumn
+                stageId={stage.id}
+                stageName={stage.name}
+                stageColor={stage.color}
+                deals={stageDeals}
+              />
+            </div>
           )
         })}
+        <DragOverlay>
+          {activeDeal ? (
+            <div className="shadow-lg scale-[1.02] rotate-[1deg]">
+              <DealCard {...toColumnDeal(activeDeal)} />
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   )
