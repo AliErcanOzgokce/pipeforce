@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import { getContacts, createContact } from "@/lib/api/contacts"
 import { getCompanies } from "@/lib/api/companies"
 import { Button } from "@/components/ui/button"
@@ -52,8 +52,7 @@ const statusVariant: Record<
 
 export default function ContactsPage() {
   const router = useRouter()
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, role, isLoaded } = useSession()
 
   const [contacts, setContacts] = useState<ContactWithCompany[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -70,17 +69,15 @@ export default function ContactsPage() {
   const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>("PROSPECT")
   const [companyId, setCompanyId] = useState("")
 
-  const isLoaded = authLoaded && orgLoaded
-
   const fetchData = useCallback(
     async (searchTerm?: string) => {
-      if (!organization?.id) return
+      if (!organizationId) return
 
       setLoading(true)
       try {
         const [contactsData, companiesData] = await Promise.all([
-          getContacts(organization.id, searchTerm),
-          getCompanies(organization.id),
+          getContacts(organizationId, searchTerm),
+          getCompanies(organizationId),
         ])
         setContacts(contactsData)
         setCompanies(companiesData)
@@ -90,14 +87,14 @@ export default function ContactsPage() {
         setLoading(false)
       }
     },
-    [organization?.id]
+    [organizationId]
   )
 
   useEffect(() => {
-    if (isLoaded && organization?.id) {
+    if (isLoaded && organizationId) {
       fetchData(search)
     }
-  }, [isLoaded, organization?.id, fetchData, search])
+  }, [isLoaded, organizationId, fetchData, search])
 
   const resetForm = () => {
     setFirstName("")
@@ -109,12 +106,12 @@ export default function ContactsPage() {
   }
 
   const handleCreate = async () => {
-    if (!organization?.id) return
+    if (!organizationId) return
 
     setCreating(true)
     try {
       await createContact({
-        organizationId: organization.id,
+        organizationId,
         firstName,
         lastName,
         email: email || null,
@@ -140,7 +137,7 @@ export default function ContactsPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId) {
     return (
       <div data-arcy="contacts-page" className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">
@@ -150,7 +147,7 @@ export default function ContactsPage() {
     )
   }
 
-  const canEdit = user.role !== "viewer"
+  const canEdit = role !== "viewer"
 
   return (
     <div data-arcy="contacts-page" className="space-y-6">

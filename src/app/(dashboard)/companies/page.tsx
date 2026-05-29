@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import {
   getCompanies,
   createCompany,
@@ -33,8 +33,7 @@ type CompanyWithCounts = Awaited<ReturnType<typeof getCompanies>>[number]
 
 export default function CompaniesPage() {
   const router = useRouter()
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, role, isLoaded } = useSession()
 
   const [companies, setCompanies] = useState<CompanyWithCounts[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,15 +47,13 @@ export default function CompaniesPage() {
   const [size, setSize] = useState("")
   const [website, setWebsite] = useState("")
 
-  const isLoaded = authLoaded && orgLoaded
-
   const fetchData = useCallback(
     async (searchTerm?: string) => {
-      if (!organization?.id) return
+      if (!organizationId) return
 
       setLoading(true)
       try {
-        const companiesData = await getCompanies(organization.id, searchTerm)
+        const companiesData = await getCompanies(organizationId, searchTerm)
         setCompanies(companiesData)
       } catch {
         // Silently handle errors for now
@@ -64,14 +61,14 @@ export default function CompaniesPage() {
         setLoading(false)
       }
     },
-    [organization?.id]
+    [organizationId]
   )
 
   useEffect(() => {
-    if (isLoaded && organization?.id) {
+    if (isLoaded && organizationId) {
       fetchData(search)
     }
-  }, [isLoaded, organization?.id, fetchData, search])
+  }, [isLoaded, organizationId, fetchData, search])
 
   const resetForm = () => {
     setName("")
@@ -81,12 +78,12 @@ export default function CompaniesPage() {
   }
 
   const handleCreate = async () => {
-    if (!organization?.id) return
+    if (!organizationId) return
 
     setCreating(true)
     try {
       await createCompany({
-        organizationId: organization.id,
+        organizationId,
         name,
         industry: industry || null,
         size: size || null,
@@ -110,7 +107,7 @@ export default function CompaniesPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId) {
     return (
       <div data-arcy="companies-page" className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">
@@ -120,7 +117,7 @@ export default function CompaniesPage() {
     )
   }
 
-  const canEdit = user.role !== "viewer"
+  const canEdit = role !== "viewer"
 
   return (
     <div data-arcy="companies-page" className="space-y-6">

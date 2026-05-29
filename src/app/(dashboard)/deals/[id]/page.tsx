@@ -2,14 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import {
   getDeal,
   getStages,
   getContacts,
   getCompanies,
   getMembers,
-  getMemberByClerkId,
   updateDealStage,
   deleteDeal,
 } from "@/lib/api/deals"
@@ -122,15 +121,13 @@ export default function DealDetailPage() {
   const router = useRouter()
   const dealId = params.id as string
 
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, memberId, role, isLoaded } = useSession()
 
   const [deal, setDeal] = useState<DealData | null>(null)
   const [stages, setStages] = useState<StageOption[]>([])
   const [contacts, setContacts] = useState<ContactOption[]>([])
   const [companies, setCompanies] = useState<CompanyOption[]>([])
   const [members, setMembers] = useState<MemberOption[]>([])
-  const [memberId, setMemberId] = useState<string | null>(null)
   const [activities, setActivities] = useState<ActivityData[]>([])
   const [notes, setNotes] = useState<NoteData[]>([])
   const [loading, setLoading] = useState(true)
@@ -149,8 +146,7 @@ export default function DealDetailPage() {
   const [noteContent, setNoteContent] = useState("")
   const [noteSubmitting, setNoteSubmitting] = useState(false)
 
-  const isLoaded = authLoaded && orgLoaded
-  const canEdit = user?.role !== "viewer"
+  const canEdit = role !== "viewer"
 
   const fetchDeal = useCallback(async () => {
     if (!dealId) return
@@ -172,17 +168,14 @@ export default function DealDetailPage() {
   }, [dealId])
 
   const fetchReferenceData = useCallback(async () => {
-    if (!organization?.id || !user?.id) return
+    if (!organizationId) return
     try {
-      const member = await getMemberByClerkId(user.id, organization.id)
-      if (member) setMemberId(member.id)
-
       const [stagesData, contactsData, companiesData, membersData] =
         await Promise.all([
-          getStages(organization.id),
-          getContacts(organization.id),
-          getCompanies(organization.id),
-          getMembers(organization.id),
+          getStages(organizationId),
+          getContacts(organizationId),
+          getCompanies(organizationId),
+          getMembers(organizationId),
         ])
       setStages(stagesData)
       setContacts(contactsData)
@@ -191,19 +184,19 @@ export default function DealDetailPage() {
     } catch {
       // silently handle
     }
-  }, [organization?.id, user?.id])
+  }, [organizationId])
 
   const fetchActivities = useCallback(async () => {
-    if (!organization?.id || !dealId) return
+    if (!organizationId || !dealId) return
     try {
       const filters: { dealId: string; type?: string } = { dealId }
       if (activityFilter !== "ALL") filters.type = activityFilter
-      const data = await getActivities(organization.id, filters)
+      const data = await getActivities(organizationId, filters)
       setActivities(data)
     } catch {
       // silently handle
     }
-  }, [organization?.id, dealId, activityFilter])
+  }, [organizationId, dealId, activityFilter])
 
   const fetchNotes = useCallback(async () => {
     if (!dealId) return
@@ -216,18 +209,18 @@ export default function DealDetailPage() {
   }, [dealId])
 
   useEffect(() => {
-    if (!isLoaded || !organization?.id || !user?.id) return
+    if (!isLoaded || !organizationId || !memberId) return
     setLoading(true)
     Promise.all([fetchDeal(), fetchReferenceData()]).finally(() =>
       setLoading(false)
     )
-  }, [isLoaded, organization?.id, user?.id, fetchDeal, fetchReferenceData])
+  }, [isLoaded, organizationId, memberId, fetchDeal, fetchReferenceData])
 
   useEffect(() => {
-    if (organization?.id && dealId) {
+    if (organizationId && dealId) {
       fetchActivities()
     }
-  }, [organization?.id, dealId, activityFilter, fetchActivities])
+  }, [organizationId, dealId, activityFilter, fetchActivities])
 
   async function handleStageChange(newStageId: string) {
     if (!deal || !newStageId || newStageId === deal.stageId) return
@@ -252,11 +245,11 @@ export default function DealDetailPage() {
 
   async function handleAddActivity(e: React.FormEvent) {
     e.preventDefault()
-    if (!organization?.id || !memberId) return
+    if (!organizationId || !memberId) return
     setActivitySubmitting(true)
     try {
       await createActivity({
-        organizationId: organization.id,
+        organizationId,
         dealId,
         createdById: memberId,
         type: activityType,
@@ -321,7 +314,7 @@ export default function DealDetailPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId || !memberId) {
     return (
       <div
         data-arcy="deal-detail-page"
@@ -424,7 +417,7 @@ export default function DealDetailPage() {
         {canEdit && (
           <div className="flex items-center gap-2">
             <DealForm
-              orgId={organization.id}
+              orgId={organizationId}
               stages={serializedStages}
               contacts={contacts.map((c) => ({
                 id: c.id,

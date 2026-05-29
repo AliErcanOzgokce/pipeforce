@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
-import { getMemberByClerkId } from "@/lib/api/deals"
+import { useSession } from "@/auth/use-session"
 import { getAnalytics } from "@/lib/api/analytics"
 import {
   Card,
@@ -68,29 +67,20 @@ function formatMonth(monthStr: string) {
 }
 
 export default function AnalyticsPage() {
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, memberId, role, isLoaded } = useSession()
 
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const isLoaded = authLoaded && orgLoaded
-
   const fetchAnalytics = useCallback(async () => {
-    if (!organization?.id || !user?.id) return
+    if (!organizationId || !memberId) return
 
     setLoading(true)
     try {
-      const member = await getMemberByClerkId(user.id, organization.id)
-      if (!member) {
-        setLoading(false)
-        return
-      }
-
       const analytics = await getAnalytics(
-        organization.id,
-        member.id,
-        user.role
+        organizationId,
+        memberId,
+        role
       )
       setData(analytics)
     } catch {
@@ -98,13 +88,13 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }, [organization?.id, user?.id, user?.role])
+  }, [organizationId, memberId, role])
 
   useEffect(() => {
-    if (isLoaded && organization?.id && user?.id) {
+    if (isLoaded && organizationId && memberId) {
       fetchAnalytics()
     }
-  }, [isLoaded, organization?.id, user?.id, fetchAnalytics])
+  }, [isLoaded, organizationId, memberId, fetchAnalytics])
 
   if (!isLoaded || loading) {
     return (
@@ -117,7 +107,7 @@ export default function AnalyticsPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId || !memberId) {
     return (
       <div
         data-arcy="analytics-page"
@@ -131,9 +121,9 @@ export default function AnalyticsPage() {
   }
 
   const roleLabel =
-    user.role === "admin"
+    role === "admin"
       ? "Team Analytics"
-      : user.role === "sales_rep"
+      : role === "sales_rep"
         ? "Your Analytics"
         : "Team Analytics (Read-Only)"
 

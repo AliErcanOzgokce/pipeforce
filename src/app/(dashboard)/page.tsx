@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
-import { getMemberByClerkId } from "@/lib/api/deals"
+import { useSession } from "@/auth/use-session"
 import { getDashboardMetrics } from "@/lib/api/dashboard"
 import {
   Card,
@@ -37,29 +36,20 @@ function formatCurrency(value: number) {
 }
 
 export default function DashboardPage() {
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, memberId, role, isLoaded } = useSession()
 
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const isLoaded = authLoaded && orgLoaded
-
   const fetchMetrics = useCallback(async () => {
-    if (!organization?.id || !user?.id) return
+    if (!organizationId || !memberId) return
 
     setLoading(true)
     try {
-      const member = await getMemberByClerkId(user.id, organization.id)
-      if (!member) {
-        setLoading(false)
-        return
-      }
-
       const data = await getDashboardMetrics(
-        organization.id,
-        member.id,
-        user.role
+        organizationId,
+        memberId,
+        role
       )
       setMetrics(data)
     } catch {
@@ -67,13 +57,13 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [organization?.id, user?.id, user?.role])
+  }, [organizationId, memberId, role])
 
   useEffect(() => {
-    if (isLoaded && organization?.id && user?.id) {
+    if (isLoaded && organizationId && memberId) {
       fetchMetrics()
     }
-  }, [isLoaded, organization?.id, user?.id, fetchMetrics])
+  }, [isLoaded, organizationId, memberId, fetchMetrics])
 
   if (!isLoaded || loading) {
     return (
@@ -86,7 +76,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId || !memberId) {
     return (
       <div
         data-arcy="dashboard-page"
@@ -100,9 +90,9 @@ export default function DashboardPage() {
   }
 
   const roleLabel =
-    user.role === "admin"
+    role === "admin"
       ? "Team Overview"
-      : user.role === "sales_rep"
+      : role === "sales_rep"
         ? "Your Overview"
         : "Team Overview (Read-Only)"
 
@@ -127,7 +117,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">
-              {user.role === "sales_rep"
+              {role === "sales_rep"
                 ? "Your active deals"
                 : "All deals in pipeline"}
             </p>

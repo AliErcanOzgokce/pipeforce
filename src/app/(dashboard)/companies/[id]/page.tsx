@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import {
   getCompany,
   updateCompany,
@@ -52,8 +52,7 @@ const statusVariant: Record<
 export default function CompanyDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, role, isLoaded } = useSession()
 
   const [company, setCompany] = useState<CompanyDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -68,7 +67,6 @@ export default function CompanyDetailPage() {
   const [size, setSize] = useState("")
   const [website, setWebsite] = useState("")
 
-  const isLoaded = authLoaded && orgLoaded
   const companyId = params.id as string
 
   const fetchData = useCallback(async () => {
@@ -86,10 +84,10 @@ export default function CompanyDetailPage() {
   }, [companyId, router])
 
   useEffect(() => {
-    if (isLoaded && organization?.id) {
+    if (isLoaded && organizationId) {
       fetchData()
     }
-  }, [isLoaded, organization?.id, fetchData])
+  }, [isLoaded, organizationId, fetchData])
 
   const populateEditForm = () => {
     if (!company) return
@@ -140,7 +138,7 @@ export default function CompanyDetailPage() {
     )
   }
 
-  if (!user || !organization || !company) {
+  if (!organizationId || !company) {
     return (
       <div data-arcy="company-detail-page" className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">Company not found.</p>
@@ -148,7 +146,7 @@ export default function CompanyDetailPage() {
     )
   }
 
-  const canEdit = user.role !== "viewer"
+  const canEdit = role !== "viewer"
 
   return (
     <div data-arcy="company-detail-page" className="space-y-6">

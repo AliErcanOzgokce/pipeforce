@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import {
   getActivities,
   createActivity,
   deleteActivity,
 } from "@/lib/api/activities"
-import { getDeals, getContacts, getMemberByClerkId } from "@/lib/api/deals"
+import { getDeals, getContacts } from "@/lib/api/deals"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -66,13 +66,11 @@ function formatTimestamp(date: Date | string) {
 }
 
 export default function ActivitiesPage() {
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, memberId, role, isLoaded } = useSession()
 
   const [activities, setActivities] = useState<Activity[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
-  const [memberId, setMemberId] = useState<string | null>(null)
 
   // Form state
   const [open, setOpen] = useState(false)
@@ -90,40 +88,32 @@ export default function ActivitiesPage() {
     { id: string; firstName: string; lastName: string }[]
   >([])
 
-  const isLoaded = authLoaded && orgLoaded
-  const canEdit = user?.role !== "viewer"
+  const canEdit = role !== "viewer"
 
   const fetchActivities = useCallback(async () => {
-    if (!organization?.id || !user?.id) return
+    if (!organizationId || !memberId) return
 
     setLoading(true)
     try {
-      const member = await getMemberByClerkId(user.id, organization.id)
-      if (!member) {
-        setLoading(false)
-        return
-      }
-      setMemberId(member.id)
-
       const filters: { type?: string; createdById?: string } = {}
       if (typeFilter) filters.type = typeFilter
-      if (user.role === "sales_rep") filters.createdById = member.id
+      if (role === "sales_rep") filters.createdById = memberId
 
-      const data = await getActivities(organization.id, filters)
+      const data = await getActivities(organizationId, filters)
       setActivities(data)
     } catch {
       // Silently handle errors
     } finally {
       setLoading(false)
     }
-  }, [organization?.id, user?.id, user?.role, typeFilter])
+  }, [organizationId, memberId, role, typeFilter])
 
   const fetchFormData = useCallback(async () => {
-    if (!organization?.id) return
+    if (!organizationId) return
     try {
       const [dealsData, contactsData] = await Promise.all([
-        getDeals(organization.id),
-        getContacts(organization.id),
+        getDeals(organizationId),
+        getContacts(organizationId),
       ])
       setDeals(dealsData.map((d) => ({ id: d.id, title: d.title })))
       setContacts(
@@ -136,19 +126,19 @@ export default function ActivitiesPage() {
     } catch {
       // Silently handle errors
     }
-  }, [organization?.id])
+  }, [organizationId])
 
   useEffect(() => {
-    if (isLoaded && organization?.id && user?.id) {
+    if (isLoaded && organizationId && memberId) {
       fetchActivities()
     }
-  }, [isLoaded, organization?.id, user?.id, fetchActivities])
+  }, [isLoaded, organizationId, memberId, fetchActivities])
 
   useEffect(() => {
-    if (open && organization?.id) {
+    if (open && organizationId) {
       fetchFormData()
     }
-  }, [open, organization?.id, fetchFormData])
+  }, [open, organizationId, fetchFormData])
 
   function resetForm() {
     setTitle("")
@@ -161,12 +151,12 @@ export default function ActivitiesPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!organization?.id || !memberId) return
+    if (!organizationId || !memberId) return
 
     setFormLoading(true)
     try {
       await createActivity({
-        organizationId: organization.id,
+        organizationId,
         type,
         title,
         description: description || null,
@@ -205,7 +195,7 @@ export default function ActivitiesPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId || !memberId) {
     return (
       <div
         data-arcy="activities-page"

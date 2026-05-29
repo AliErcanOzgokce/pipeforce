@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import { KanbanBoard } from "@/components/deals/kanban-board"
 import { DealsTable } from "@/components/deals/deals-table"
 import { DealForm } from "@/components/deals/deal-form"
@@ -14,7 +14,6 @@ import {
   getContacts,
   getCompanies,
   getMembers,
-  getMemberByClerkId,
 } from "@/lib/api/deals"
 
 type DealWithRelations = Awaited<ReturnType<typeof getDeals>>[number]
@@ -24,8 +23,7 @@ type Company = Awaited<ReturnType<typeof getCompanies>>[number]
 type Member = Awaited<ReturnType<typeof getMembers>>[number]
 
 export default function DealsPage() {
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, memberId, role, isLoaded } = useSession()
 
   const [view, setView] = useState<"kanban" | "table">("kanban")
   const [deals, setDeals] = useState<DealWithRelations[]>([])
@@ -35,30 +33,21 @@ export default function DealsPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
 
-  const isLoaded = authLoaded && orgLoaded
-
   const fetchData = useCallback(async () => {
-    if (!organization?.id || !user?.id) return
+    if (!organizationId || !memberId) return
 
     setLoading(true)
     try {
-      // Get the Member record for the current clerk user
-      const member = await getMemberByClerkId(user.id, organization.id)
-      if (!member) {
-        setLoading(false)
-        return
-      }
-
       // Sales reps only see their own deals
-      const ownerId = user.role === "sales_rep" ? member.id : undefined
+      const ownerId = role === "sales_rep" ? memberId : undefined
 
       const [dealsData, stagesData, contactsData, companiesData, membersData] =
         await Promise.all([
-          getDeals(organization.id, ownerId),
-          getStages(organization.id),
-          getContacts(organization.id),
-          getCompanies(organization.id),
-          getMembers(organization.id),
+          getDeals(organizationId, ownerId),
+          getStages(organizationId),
+          getContacts(organizationId),
+          getCompanies(organizationId),
+          getMembers(organizationId),
         ])
 
       setDeals(dealsData)
@@ -71,13 +60,13 @@ export default function DealsPage() {
     } finally {
       setLoading(false)
     }
-  }, [organization?.id, user?.id, user?.role])
+  }, [organizationId, memberId, role])
 
   useEffect(() => {
-    if (isLoaded && organization?.id && user?.id) {
+    if (isLoaded && organizationId && memberId) {
       fetchData()
     }
-  }, [isLoaded, organization?.id, user?.id, fetchData])
+  }, [isLoaded, organizationId, memberId, fetchData])
 
   if (!isLoaded || loading) {
     return (
@@ -87,7 +76,7 @@ export default function DealsPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId || !memberId) {
     return (
       <div data-arcy="deals-page" className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">
@@ -97,7 +86,7 @@ export default function DealsPage() {
     )
   }
 
-  const canEdit = user.role !== "viewer"
+  const canEdit = role !== "viewer"
 
   // Serialize deals for child components (convert Decimal/Date to primitives)
   const serializedDeals = deals.map((d) => ({
@@ -141,7 +130,7 @@ export default function DealsPage() {
           <ViewToggle view={view} onViewChange={setView} />
           {canEdit && (
             <DealForm
-              orgId={organization.id}
+              orgId={organizationId}
               stages={serializedStages}
               contacts={contacts.map((c) => ({
                 id: c.id,

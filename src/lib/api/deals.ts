@@ -223,18 +223,25 @@ export async function getMembers(orgId: string) {
 
 export async function getMemberByClerkId(
   clerkUserId: string,
-  orgId: string
+  clerkOrgId: string
 ) {
-  if (!clerkUserId || !orgId) return null
+  if (!clerkUserId || !clerkOrgId) return null
+
+  // Find org by clerkOrgId
+  const org = await prisma.organization.findUnique({
+    where: { clerkOrgId },
+  })
+
+  if (!org) return null
 
   const member = await prisma.member.findUnique({
     where: {
       clerkUserId_organizationId: {
         clerkUserId,
-        organizationId: orgId,
+        organizationId: org.id,
       },
     },
   })
 
-  return member
+  return member ? { ...member, organizationId: org.id } : null
 }

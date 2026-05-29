@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
+import { useAuthOrganization } from "@/auth/hooks"
 import { getMembers } from "@/lib/api/deals"
 import {
   Card,
@@ -55,21 +56,20 @@ function formatRole(role: string) {
 }
 
 export default function SettingsPage() {
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, role, isLoaded } = useSession()
+  const { organization } = useAuthOrganization()
 
   const [members, setMembers] = useState<MemberData[]>([])
   const [loading, setLoading] = useState(true)
 
-  const isLoaded = authLoaded && orgLoaded
-  const isAdmin = user?.role === "admin"
+  const isAdmin = role === "admin"
 
   const fetchMembers = useCallback(async () => {
-    if (!organization?.id) return
+    if (!organizationId) return
 
     setLoading(true)
     try {
-      const data = await getMembers(organization.id)
+      const data = await getMembers(organizationId)
       setMembers(
         data.map((m) => ({
           id: m.id,
@@ -84,13 +84,13 @@ export default function SettingsPage() {
     } finally {
       setLoading(false)
     }
-  }, [organization?.id])
+  }, [organizationId])
 
   useEffect(() => {
-    if (isLoaded && organization?.id) {
+    if (isLoaded && organizationId) {
       fetchMembers()
     }
-  }, [isLoaded, organization?.id, fetchMembers])
+  }, [isLoaded, organizationId, fetchMembers])
 
   if (!isLoaded || loading) {
     return (
@@ -103,7 +103,7 @@ export default function SettingsPage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId || !organization) {
     return (
       <div
         data-arcy="settings-page"

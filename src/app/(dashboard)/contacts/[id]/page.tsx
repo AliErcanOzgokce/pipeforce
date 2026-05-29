@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import {
   getContact,
   updateContact,
@@ -63,8 +63,7 @@ const statusVariant: Record<
 export default function ContactDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, role, isLoaded } = useSession()
 
   const [contact, setContact] = useState<ContactDetail | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -82,17 +81,16 @@ export default function ContactDetailPage() {
   const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>("PROSPECT")
   const [companyId, setCompanyId] = useState("")
 
-  const isLoaded = authLoaded && orgLoaded
   const contactId = params.id as string
 
   const fetchData = useCallback(async () => {
-    if (!contactId || !organization?.id) return
+    if (!contactId || !organizationId) return
 
     setLoading(true)
     try {
       const [contactData, companiesData] = await Promise.all([
         getContact(contactId),
-        getCompanies(organization.id),
+        getCompanies(organizationId),
       ])
       setContact(contactData)
       setCompanies(companiesData)
@@ -101,13 +99,13 @@ export default function ContactDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [contactId, organization?.id, router])
+  }, [contactId, organizationId, router])
 
   useEffect(() => {
-    if (isLoaded && organization?.id) {
+    if (isLoaded && organizationId) {
       fetchData()
     }
-  }, [isLoaded, organization?.id, fetchData])
+  }, [isLoaded, organizationId, fetchData])
 
   const populateEditForm = () => {
     if (!contact) return
@@ -162,7 +160,7 @@ export default function ContactDetailPage() {
     )
   }
 
-  if (!user || !organization || !contact) {
+  if (!organizationId || !contact) {
     return (
       <div data-arcy="contact-detail-page" className="flex items-center justify-center py-12">
         <p className="text-muted-foreground">Contact not found.</p>
@@ -170,7 +168,7 @@ export default function ContactDetailPage() {
     )
   }
 
-  const canEdit = user.role !== "viewer"
+  const canEdit = role !== "viewer"
 
   return (
     <div data-arcy="contact-detail-page" className="space-y-6">

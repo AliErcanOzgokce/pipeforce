@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useAuth, useAuthOrganization } from "@/auth/hooks"
+import { useSession } from "@/auth/use-session"
 import {
   getPipeline,
   createStage,
@@ -118,8 +118,7 @@ function SortableStageItem({
 }
 
 export default function PipelinePage() {
-  const { user, isLoaded: authLoaded } = useAuth()
-  const { organization, isLoaded: orgLoaded } = useAuthOrganization()
+  const { organizationId, role, isLoaded } = useSession()
 
   const [stages, setStages] = useState<StageData[]>([])
   const [pipelineId, setPipelineId] = useState<string | null>(null)
@@ -138,19 +137,18 @@ export default function PipelinePage() {
   const [editColor, setEditColor] = useState("")
   const [editLoading, setEditLoading] = useState(false)
 
-  const isLoaded = authLoaded && orgLoaded
-  const isAdmin = user?.role === "admin"
+  const isAdmin = role === "admin"
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   )
 
   const fetchPipeline = useCallback(async () => {
-    if (!organization?.id) return
+    if (!organizationId) return
 
     setLoading(true)
     try {
-      const pipeline = await getPipeline(organization.id)
+      const pipeline = await getPipeline(organizationId)
       if (pipeline) {
         setPipelineId(pipeline.id)
         setStages(
@@ -167,13 +165,13 @@ export default function PipelinePage() {
     } finally {
       setLoading(false)
     }
-  }, [organization?.id])
+  }, [organizationId])
 
   useEffect(() => {
-    if (isLoaded && organization?.id) {
+    if (isLoaded && organizationId) {
       fetchPipeline()
     }
-  }, [isLoaded, organization?.id, fetchPipeline])
+  }, [isLoaded, organizationId, fetchPipeline])
 
   async function handleAddStage(e: React.FormEvent) {
     e.preventDefault()
@@ -267,7 +265,7 @@ export default function PipelinePage() {
     )
   }
 
-  if (!user || !organization) {
+  if (!organizationId) {
     return (
       <div
         data-arcy="pipeline-page"
