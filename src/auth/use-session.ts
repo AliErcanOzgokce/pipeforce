@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth, useAuthOrganization } from "@/auth/hooks"
 import { ensureOrganizationAndMember } from "@/lib/api/sync"
 
@@ -11,10 +11,6 @@ interface SessionData {
   isLoaded: boolean
 }
 
-/**
- * Resolves Clerk auth into DB-level organization and member IDs.
- * Auto-creates org + member if they don't exist in DB.
- */
 export function useSession(): SessionData {
   const { user, isLoaded: authLoaded } = useAuth()
   const { organization, isLoaded: orgLoaded } = useAuthOrganization()
@@ -24,9 +20,14 @@ export function useSession(): SessionData {
     role: "viewer",
     isLoaded: false,
   })
+  const syncedRef = useRef("")
 
   useEffect(() => {
     if (!authLoaded || !orgLoaded || !user || !organization) return
+
+    const key = `${user.id}:${organization.id}`
+    if (syncedRef.current === key) return
+    syncedRef.current = key
 
     ensureOrganizationAndMember({
       clerkUserId: user.id,
