@@ -2,9 +2,6 @@
 
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CalendarDays, DollarSign } from "lucide-react"
 
 interface DealCardProps {
   id: string
@@ -58,7 +55,6 @@ export function DealCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   }
 
   return (
@@ -68,38 +64,44 @@ export function DealCard({
       {...attributes}
       {...listeners}
       data-arcy={`deal-card-${id}`}
+      className={`bg-card border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow duration-150 cursor-grab active:cursor-grabbing ${
+        isDragging ? "opacity-50 scale-[1.02]" : ""
+      }`}
     >
-      <Card size="sm" className="cursor-grab active:cursor-grabbing">
-        <CardContent className="space-y-2">
-          <p className="font-medium leading-tight">{title}</p>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <DollarSign className="size-3.5" />
-            <span>{formatCurrency(value, currency)}</span>
-          </div>
-          {contactName && (
-            <p className="text-xs text-muted-foreground">{contactName}</p>
-          )}
-          <div className="flex items-center justify-between">
-            {expectedCloseDate && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarDays className="size-3" />
-                <span>
-                  {new Date(expectedCloseDate).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              </div>
-            )}
-            <div className="ml-auto">
-              <Avatar size="sm">
-                {ownerImageUrl && <AvatarImage src={ownerImageUrl} />}
-                <AvatarFallback>{getInitials(ownerName)}</AvatarFallback>
-              </Avatar>
+      <p className="font-medium text-sm truncate">{title}</p>
+      <p className="font-mono text-xs text-green-600 font-medium mt-1">
+        {formatCurrency(value, currency)}
+      </p>
+      {contactName && (
+        <p className="text-xs text-muted-foreground truncate mt-1">
+          {contactName}
+        </p>
+      )}
+      <div className="flex items-center justify-between mt-2">
+        {expectedCloseDate ? (
+          <span className="text-xs text-muted-foreground">
+            {new Date(expectedCloseDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        ) : (
+          <span />
+        )}
+        <div className="ml-auto">
+          {ownerImageUrl ? (
+            <img
+              src={ownerImageUrl}
+              alt={ownerName ?? "Owner"}
+              className="w-6 h-6 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-medium">
+              {getInitials(ownerName)}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

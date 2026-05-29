@@ -155,14 +155,14 @@ export function DealForm({
       <DialogTrigger render={<span />}>{trigger}</DialogTrigger>
       <DialogContent
         data-arcy="deal-form"
-        className="sm:max-w-lg"
+        className="sm:max-w-lg rounded-lg"
       >
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Deal" : "New Deal"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="deal-title">Title</Label>
+            <Label htmlFor="deal-title">Title <span className="text-red-500">*</span></Label>
             <Input
               id="deal-title"
               value={title}
@@ -200,7 +200,7 @@ export function DealForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="deal-stage">Stage</Label>
+            <Label htmlFor="deal-stage">Stage <span className="text-red-500">*</span></Label>
             <Select value={stageId} onValueChange={(v) => v && setStageId(v)} required>
               <SelectTrigger className="w-full" id="deal-stage">
                 <SelectValue placeholder="Select stage" />
@@ -216,7 +216,7 @@ export function DealForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="deal-owner">Owner</Label>
+            <Label htmlFor="deal-owner">Owner <span className="text-red-500">*</span></Label>
             <Select value={ownerId} onValueChange={(v) => v && setOwnerId(v)} required>
               <SelectTrigger className="w-full" id="deal-owner">
                 <SelectValue placeholder="Select owner" />
@@ -285,7 +285,7 @@ export function DealForm({
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={loading || !title || !stageId || !ownerId}>
+            <Button type="submit" disabled={loading || !title || !stageId || !ownerId} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {loading
                 ? isEdit
                   ? "Saving..."

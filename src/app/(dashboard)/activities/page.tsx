@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -47,6 +46,14 @@ const ACTIVITY_TYPES = [
   { value: "TASK", label: "Task", icon: CheckSquare },
   { value: "NOTE", label: "Note", icon: StickyNote },
 ] as const
+
+const activityTypeColors: Record<string, { bg: string; text: string; iconBg: string; iconText: string }> = {
+  CALL: { bg: "bg-green-50", text: "text-green-700", iconBg: "bg-green-100", iconText: "text-green-700" },
+  EMAIL: { bg: "bg-blue-50", text: "text-blue-700", iconBg: "bg-blue-100", iconText: "text-blue-700" },
+  MEETING: { bg: "bg-purple-50", text: "text-purple-700", iconBg: "bg-purple-100", iconText: "text-purple-700" },
+  TASK: { bg: "bg-amber-50", text: "text-amber-700", iconBg: "bg-amber-100", iconText: "text-amber-700" },
+  NOTE: { bg: "bg-gray-50", text: "text-gray-700", iconBg: "bg-gray-100", iconText: "text-gray-700" },
+}
 
 function getActivityIcon(type: string) {
   const found = ACTIVITY_TYPES.find((t) => t.value === type)
@@ -188,9 +195,36 @@ export default function ActivitiesPage() {
     return (
       <div
         data-arcy="activities-page"
-        className="flex items-center justify-center py-12"
+        className="space-y-6"
       >
-        <p className="text-muted-foreground">Loading activities...</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="skeleton h-8 w-32 rounded-md" />
+            <div className="skeleton mt-2 h-4 w-24 rounded-md" />
+          </div>
+          <div className="skeleton h-9 w-32 rounded-md" />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="skeleton h-8 w-20 rounded-full" />
+          ))}
+        </div>
+        <div className="relative pl-8 space-y-4">
+          <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-4">
+              <div className="skeleton h-8 w-8 rounded-full shrink-0" />
+              <div className="bg-card border rounded-lg shadow-sm p-4 flex-1 space-y-2">
+                <div className="skeleton h-4 w-48 rounded" />
+                <div className="skeleton h-3 w-64 rounded" />
+                <div className="flex gap-3">
+                  <div className="skeleton h-3 w-20 rounded" />
+                  <div className="skeleton h-3 w-24 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -199,9 +233,9 @@ export default function ActivitiesPage() {
     return (
       <div
         data-arcy="activities-page"
-        className="flex items-center justify-center py-12"
+        className="flex flex-col items-center justify-center py-24 text-center"
       >
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-[15px]">
           Please sign in and select an organization.
         </p>
       </div>
@@ -212,8 +246,10 @@ export default function ActivitiesPage() {
     <div data-arcy="activities-page" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Activities</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight">
+            Activities
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
             {activities.length} activit{activities.length !== 1 ? "ies" : "y"}
           </p>
         </div>
@@ -355,108 +391,135 @@ export default function ActivitiesPage() {
         )}
       </div>
 
-      {/* Type filter buttons */}
+      {/* Type filter pill buttons */}
       <div data-arcy="activity-type-filters" className="flex flex-wrap gap-2">
-        <Button
-          variant={typeFilter === null ? "default" : "outline"}
-          size="sm"
+        <button
+          className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-100 ${
+            typeFilter === null
+              ? "bg-primary text-white"
+              : "bg-muted/50 text-muted-foreground hover:bg-muted"
+          }`}
           onClick={() => setTypeFilter(null)}
           data-arcy="filter-all"
         >
           All
-        </Button>
+        </button>
         {ACTIVITY_TYPES.map((t) => {
           const Icon = t.icon
+          const isActive = typeFilter === t.value
           return (
-            <Button
+            <button
               key={t.value}
-              variant={typeFilter === t.value ? "default" : "outline"}
-              size="sm"
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-100 ${
+                isActive
+                  ? "bg-primary text-white"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted"
+              }`}
               onClick={() =>
                 setTypeFilter(typeFilter === t.value ? null : t.value)
               }
               data-arcy={`filter-${t.value.toLowerCase()}`}
             >
-              <Icon className="mr-1 size-3.5" />
+              <Icon className="size-3.5" />
               {t.label}
-            </Button>
+            </button>
           )
         })}
       </div>
 
       {/* Activity timeline */}
       {activities.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">No activities found.</p>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-muted-foreground text-[15px]">No activities found.</p>
+          {canEdit && (
+            <Button
+              size="sm"
+              className="mt-4"
+              onClick={() => setOpen(true)}
+            >
+              <Plus className="mr-1 size-4" />
+              Log your first activity
+            </Button>
+          )}
         </div>
       ) : (
-        <div data-arcy="activity-list" className="space-y-3">
-          {activities.map((activity) => {
-            const Icon = getActivityIcon(activity.type)
-            return (
-              <div
-                key={activity.id}
-                data-arcy={`activity-item-${activity.id}`}
-                className="flex items-start gap-4 rounded-lg border p-4"
-              >
-                <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                  <Icon className="size-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{activity.title}</p>
-                        <Badge variant="secondary">
-                          {activity.type.charAt(0) +
-                            activity.type.slice(1).toLowerCase()}
-                        </Badge>
+        <div data-arcy="activity-list" className="relative pl-8">
+          {/* Vertical timeline line */}
+          <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
+
+          <div className="space-y-4">
+            {activities.map((activity) => {
+              const Icon = getActivityIcon(activity.type)
+              const colors = activityTypeColors[activity.type] ?? activityTypeColors.NOTE
+              return (
+                <div
+                  key={activity.id}
+                  data-arcy={`activity-item-${activity.id}`}
+                  className="relative flex items-start gap-4"
+                >
+                  {/* Timeline dot / icon */}
+                  <div className={`relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full ${colors.iconBg} -ml-8`}>
+                    <Icon className={`size-4 ${colors.iconText}`} />
+                  </div>
+
+                  {/* Activity card */}
+                  <div className="flex-1 bg-card border rounded-lg shadow-sm p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-[15px]">{activity.title}</p>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}>
+                            {activity.type.charAt(0) +
+                              activity.type.slice(1).toLowerCase()}
+                          </span>
+                        </div>
+                        {activity.description && (
+                          <p className="mt-1 text-[13px] text-muted-foreground">
+                            {activity.description}
+                          </p>
+                        )}
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
+                          {activity.deal && (
+                            <span>
+                              Deal:{" "}
+                              <span className="font-medium text-foreground">
+                                {activity.deal.title}
+                              </span>
+                            </span>
+                          )}
+                          {activity.contact && (
+                            <span>
+                              Contact:{" "}
+                              <span className="font-medium text-foreground">
+                                {activity.contact.firstName}{" "}
+                                {activity.contact.lastName}
+                              </span>
+                            </span>
+                          )}
+                          <span>
+                            By:{" "}
+                            {activity.createdBy.name ?? activity.createdBy.email}
+                          </span>
+                          <span>{formatTimestamp(activity.createdAt)}</span>
+                        </div>
                       </div>
-                      {activity.description && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {activity.description}
-                        </p>
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          data-arcy={`delete-activity-${activity.id}`}
+                          onClick={() => handleDelete(activity.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
                       )}
-                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        {activity.deal && (
-                          <span>
-                            Deal:{" "}
-                            <span className="font-medium text-foreground">
-                              {activity.deal.title}
-                            </span>
-                          </span>
-                        )}
-                        {activity.contact && (
-                          <span>
-                            Contact:{" "}
-                            <span className="font-medium text-foreground">
-                              {activity.contact.firstName}{" "}
-                              {activity.contact.lastName}
-                            </span>
-                          </span>
-                        )}
-                        <span>
-                          By:{" "}
-                          {activity.createdBy.name ?? activity.createdBy.email}
-                        </span>
-                        <span>{formatTimestamp(activity.createdAt)}</span>
-                      </div>
                     </div>
-                    {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        data-arcy={`delete-activity-${activity.id}`}
-                        onClick={() => handleDelete(activity.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

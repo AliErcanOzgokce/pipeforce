@@ -101,16 +101,39 @@ export default function CompaniesPage() {
 
   if (!isLoaded || loading) {
     return (
-      <div data-arcy="companies-page" className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading companies...</p>
+      <div data-arcy="companies-page" className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="skeleton h-8 w-36 rounded-md" />
+            <div className="skeleton mt-2 h-4 w-48 rounded-md" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="skeleton h-9 w-64 rounded-md" />
+            <div className="skeleton h-9 w-32 rounded-md" />
+          </div>
+        </div>
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="skeleton h-4 w-36 rounded" />
+                <div className="skeleton h-4 w-24 rounded" />
+                <div className="skeleton h-4 w-16 rounded" />
+                <div className="skeleton h-4 w-12 rounded" />
+                <div className="skeleton h-4 w-12 rounded" />
+                <div className="skeleton h-4 w-32 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   if (!organizationId) {
     return (
-      <div data-arcy="companies-page" className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">
+      <div data-arcy="companies-page" className="flex flex-col items-center justify-center py-24 text-center">
+        <p className="text-muted-foreground text-[15px]">
           Please sign in and select an organization.
         </p>
       </div>
@@ -123,21 +146,23 @@ export default function CompaniesPage() {
     <div data-arcy="companies-page" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Companies</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight">
+            Companies
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
             {companies.length} compan{companies.length !== 1 ? "ies" : "y"} in
             your organization
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative w-64">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               data-arcy="companies-search-input"
               placeholder="Search companies..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 w-64"
+              className="pl-8 w-full rounded-md"
             />
           </div>
           {canEdit && (
@@ -214,27 +239,38 @@ export default function CompaniesPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border bg-card shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Industry</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead>Contacts</TableHead>
-              <TableHead>Deals</TableHead>
-              <TableHead>Website</TableHead>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Name</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Industry</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Size</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Contacts</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Deals</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Website</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {companies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    {search
-                      ? "No companies match your search."
-                      : "No companies yet."}
-                  </p>
+                <TableCell colSpan={6} className="text-center py-16">
+                  <div className="flex flex-col items-center gap-3">
+                    <p className="text-muted-foreground text-[15px]">
+                      {search
+                        ? "No companies match your search."
+                        : "No companies yet."}
+                    </p>
+                    {!search && canEdit && (
+                      <Button
+                        size="sm"
+                        onClick={() => setDialogOpen(true)}
+                      >
+                        <Plus className="mr-1 size-4" />
+                        Create your first company
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -242,27 +278,27 @@ export default function CompaniesPage() {
                 <TableRow
                   key={company.id}
                   data-arcy={`company-row-${company.id}`}
-                  className="cursor-pointer"
+                  className="cursor-pointer hover:bg-muted/50 transition-colors duration-100"
                   onClick={() => router.push(`/companies/${company.id}`)}
                 >
-                  <TableCell className="font-medium">{company.name}</TableCell>
-                  <TableCell>{company.industry ?? "—"}</TableCell>
-                  <TableCell>{company.size ?? "—"}</TableCell>
-                  <TableCell>{company._count.contacts}</TableCell>
-                  <TableCell>{company._count.deals}</TableCell>
+                  <TableCell className="font-medium text-[15px]">{company.name}</TableCell>
+                  <TableCell className="text-[15px]">{company.industry ?? "\u2014"}</TableCell>
+                  <TableCell className="text-[15px]">{company.size ?? "\u2014"}</TableCell>
+                  <TableCell className="text-[15px] tabular-nums">{company._count.contacts}</TableCell>
+                  <TableCell className="text-[15px] tabular-nums">{company._count.deals}</TableCell>
                   <TableCell>
                     {company.website ? (
                       <a
                         href={company.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary underline underline-offset-2"
+                        className="text-primary underline underline-offset-2 text-[15px]"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {company.website.replace(/^https?:\/\//, "")}
                       </a>
                     ) : (
-                      "—"
+                      "\u2014"
                     )}
                   </TableCell>
                 </TableRow>

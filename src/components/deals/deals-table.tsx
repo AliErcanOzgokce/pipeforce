@@ -9,8 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface DealRow {
   id: string
@@ -54,20 +52,34 @@ export function DealsTable({ deals }: DealsTableProps) {
     <div data-arcy="deals-table">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Value</TableHead>
-            <TableHead>Stage</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Owner</TableHead>
-            <TableHead>Close Date</TableHead>
+          <TableRow className="bg-muted/30">
+            <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Title
+            </TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Value
+            </TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Stage
+            </TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Contact
+            </TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Company
+            </TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Owner
+            </TableHead>
+            <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Close Date
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {deals.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
+              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                 No deals found.
               </TableCell>
             </TableRow>
@@ -75,42 +87,49 @@ export function DealsTable({ deals }: DealsTableProps) {
           {deals.map((deal) => (
             <TableRow
               key={deal.id}
-              className="cursor-pointer"
+              className="hover:bg-muted/50 cursor-pointer transition-colors duration-100"
               onClick={() => router.push(`/deals/${deal.id}`)}
             >
-              <TableCell className="font-medium">{deal.title}</TableCell>
-              <TableCell>
+              <TableCell className="font-medium text-foreground">
+                {deal.title}
+              </TableCell>
+              <TableCell className="font-mono text-sm text-green-600">
                 {formatCurrency(Number(deal.value), deal.currency)}
               </TableCell>
               <TableCell>
-                <Badge variant="secondary">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
                   <span
-                    className="mr-1 inline-block size-2 rounded-full"
+                    className="inline-block size-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: deal.stage.color }}
                   />
                   {deal.stage.name}
-                </Badge>
+                </span>
               </TableCell>
-              <TableCell>
+              <TableCell className="text-sm">
                 {deal.contact
                   ? `${deal.contact.firstName} ${deal.contact.lastName}`
                   : "-"}
               </TableCell>
-              <TableCell>{deal.company?.name ?? "-"}</TableCell>
+              <TableCell className="text-sm">
+                {deal.company?.name ?? "-"}
+              </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <Avatar size="sm">
-                    {deal.owner.imageUrl && (
-                      <AvatarImage src={deal.owner.imageUrl} />
-                    )}
-                    <AvatarFallback>
+                  {deal.owner.imageUrl ? (
+                    <img
+                      src={deal.owner.imageUrl}
+                      alt={deal.owner.name ?? "Owner"}
+                      className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-medium flex-shrink-0">
                       {getInitials(deal.owner.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                    </div>
+                  )}
                   <span className="text-sm">{deal.owner.name ?? "-"}</span>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="text-muted-foreground text-sm">
                 {deal.expectedCloseDate
                   ? new Date(deal.expectedCloseDate).toLocaleDateString(
                       "en-US",

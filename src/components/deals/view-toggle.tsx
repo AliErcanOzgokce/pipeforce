@@ -1,6 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { LayoutGrid, Table2 } from "lucide-react"
 
 interface ViewToggleProps {
@@ -10,23 +9,31 @@ interface ViewToggleProps {
 
 export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
   return (
-    <div data-arcy="view-toggle" className="flex items-center gap-1 rounded-lg border p-0.5">
-      <Button
-        variant={view === "kanban" ? "secondary" : "ghost"}
-        size="sm"
+    <div data-arcy="view-toggle" className="inline-flex bg-muted rounded-md p-0.5">
+      <button
+        type="button"
         onClick={() => onViewChange("kanban")}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all duration-150 ${
+          view === "kanban"
+            ? "bg-card shadow-sm text-foreground font-medium"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
       >
-        <LayoutGrid className="mr-1 size-4" />
+        <LayoutGrid className="size-4" />
         Board
-      </Button>
-      <Button
-        variant={view === "table" ? "secondary" : "ghost"}
-        size="sm"
+      </button>
+      <button
+        type="button"
         onClick={() => onViewChange("table")}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all duration-150 ${
+          view === "table"
+            ? "bg-card shadow-sm text-foreground font-medium"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
       >
-        <Table2 className="mr-1 size-4" />
+        <Table2 className="size-4" />
         Table
-      </Button>
+      </button>
     </div>
   )
 }
