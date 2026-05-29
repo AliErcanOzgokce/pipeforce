@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -10,4 +5,184 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  SALES_REP
+  VIEWER
+}
+
+enum ContactStatus {
+  PROSPECT
+  ACTIVE
+  CUSTOMER
+  CHURNED
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+}
+
+model Organization {
+  id         String   @id @default(cuid())
+  clerkOrgId String   @unique
+  name       String
+  slug       String
+  createdAt  DateTime @default(now())
+
+  members    Member[]
+  pipelines  Pipeline[]
+  deals      Deal[]
+  contacts   Contact[]
+  companies  Company[]
+  activities Activity[]
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  clerkUserId    String
+  organizationId String
+  email          String
+  name           String?
+  imageUrl       String?
+  role           Role         @default(SALES_REP)
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deals          Deal[]       @relation("DealOwner")
+  activities     Activity[]   @relation("ActivityCreator")
+
+  @@unique([clerkUserId, organizationId])
+  @@index([organizationId])
+}
+
+model Pipeline {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stages         Stage[]
+
+  @@index([organizationId])
+}
+
+model Stage {
+  id         String   @id @default(cuid())
+  pipelineId String
+  name       String
+  order      Int
+  color      String   @default("#6366f1")
+  createdAt  DateTime @default(now())
+
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  deals      Deal[]
+
+  @@unique([pipelineId, order])
+  @@index([pipelineId])
+}
+
+model Deal {
+  id                String    @id @default(cuid())
+  organizationId    String
+  stageId           String
+  contactId         String?
+  companyId         String?
+  ownerId           String
+  title             String
+  value             Decimal   @default(0)
+  currency          String    @default("USD")
+  expectedCloseDate DateTime?
+  description       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stage             Stage        @relation(fields: [stageId], references: [id])
+  contact           Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  company           Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  owner             Member       @relation("DealOwner", fields: [ownerId], references: [id])
+  activities        Activity[]
+  notes             Note[]
+
+  @@index([organizationId])
+  @@index([stageId])
+  @@index([ownerId])
+}
+
+model Contact {
+  id             String        @id @default(cuid())
+  organizationId String
+  companyId      String?
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  status         ContactStatus @default(PROSPECT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company        Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  deals          Deal[]
+  activities     Activity[]
+
+  @@index([organizationId])
+}
+
+model Company {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  industry       String?
+  size           String?
+  website        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts       Contact[]
+  deals          Deal[]
+
+  @@index([organizationId])
+}
+
+model Activity {
+  id             String       @id @default(cuid())
+  organizationId String
+  dealId         String?
+  contactId      String?
+  createdById    String
+  type           ActivityType
+  title          String
+  description    String?
+  completedAt    DateTime?
+  dueDate        DateTime?
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deal           Deal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contact        Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  createdBy      Member       @relation("ActivityCreator", fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@index([dealId])
+  @@index([contactId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  dealId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
 }
