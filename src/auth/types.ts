@@ -1,9 +1,11 @@
+export type UserRole = "admin" | "sales_rep" | "viewer"
+
 export interface AuthUser {
   id: string
   email: string
   name: string | null
   imageUrl: string | null
-  role: "admin" | "sales_rep" | "viewer"
+  role: UserRole
 }
 
 export interface AuthOrganization {
