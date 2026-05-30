@@ -65,7 +65,10 @@ export async function getCompany(id: string) {
 
   if (!company) throw new Error("Company not found")
 
-  return company
+  return {
+    ...company,
+    deals: company.deals.map((d) => ({ ...d, value: Number(d.value) })),
+  }
 }
 
 export async function createCompany(data: {

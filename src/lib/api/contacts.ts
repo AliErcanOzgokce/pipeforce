@@ -58,7 +58,10 @@ export async function getContact(id: string) {
 
   if (!contact) throw new Error("Contact not found")
 
-  return contact
+  return {
+    ...contact,
+    deals: contact.deals.map((d) => ({ ...d, value: Number(d.value) })),
+  }
 }
 
 export async function createContact(data: {
