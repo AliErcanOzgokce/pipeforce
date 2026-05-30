@@ -152,7 +152,7 @@ export function DealForm({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<span />}>{trigger}</DialogTrigger>
+      <DialogTrigger nativeButton={false} render={<span />}>{trigger}</DialogTrigger>
       <DialogContent
         data-arcy="deal-form"
         className="sm:max-w-lg rounded-lg"
