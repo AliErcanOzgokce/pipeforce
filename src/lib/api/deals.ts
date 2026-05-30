@@ -2,6 +2,11 @@
 
 import { prisma } from "@/lib/db"
 
+// Prisma Decimal can't be serialized to client components — convert to number
+function serializeDeal<T extends { value: unknown }>(deal: T): Omit<T, "value"> & { value: number } {
+  return { ...deal, value: Number(deal.value) }
+}
+
 export async function getDeal(id: string) {
   if (!id) throw new Error("Deal ID is required")
 
@@ -24,7 +29,7 @@ export async function getDeal(id: string) {
     },
   })
 
-  return deal
+  return deal ? serializeDeal(deal) : null
 }
 
 export async function getDeals(orgId: string, userId?: string) {
@@ -51,7 +56,7 @@ export async function getDeals(orgId: string, userId?: string) {
     orderBy: { createdAt: "desc" },
   })
 
-  return deals
+  return deals.map(serializeDeal)
 }
 
 export async function createDeal(data: {
@@ -94,7 +99,7 @@ export async function createDeal(data: {
     },
   })
 
-  return deal
+  return serializeDeal(deal)
 }
 
 export async function updateDeal(
@@ -142,7 +147,7 @@ export async function updateDeal(
     },
   })
 
-  return deal
+  return serializeDeal(deal)
 }
 
 export async function updateDealStage(dealId: string, stageId: string) {
@@ -160,7 +165,7 @@ export async function updateDealStage(dealId: string, stageId: string) {
     },
   })
 
-  return deal
+  return serializeDeal(deal)
 }
 
 export async function deleteDeal(id: string) {
