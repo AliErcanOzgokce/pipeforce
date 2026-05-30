@@ -42,6 +42,29 @@ interface StageData {
   name: string
   color: string
   order: number
+  dealCount: number
+  totalValue: number
+  avgValue: number
+  topDeals: string[]
+}
+
+interface PipelineData {
+  id: string
+  name: string
+  totalStages: number
+  totalDeals: number
+  totalValue: number
+  stages: StageData[]
+}
+
+function formatCurrency(value: number): string {
+  if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`
+  }
+  if (value >= 1_000) {
+    return `$${(value / 1_000).toFixed(1)}k`
+  }
+  return `$${value.toLocaleString()}`
 }
 
 function SortableStageItem({
@@ -76,25 +99,51 @@ function SortableStageItem({
       ref={setNodeRef}
       style={style}
       data-arcy={`stage-item-${stage.id}`}
-      className="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="flex items-stretch rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md"
     >
+      {/* Left: drag handle + color bar */}
+      <div className="flex items-center gap-0">
+        {canEdit && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="flex items-center self-stretch cursor-grab touch-none px-3 text-muted-foreground transition-colors duration-150 hover:text-foreground"
+            data-arcy={`stage-drag-handle-${stage.id}`}
+          >
+            <GripVertical className="size-5" />
+          </button>
+        )}
+        <div
+          className="w-1 self-stretch shrink-0 rounded-l"
+          style={{ backgroundColor: stage.color }}
+        />
+      </div>
+
+      {/* Middle: stage info */}
+      <div className="flex-1 py-4 px-4 min-w-0">
+        <p className="text-[15px] font-semibold">{stage.name}</p>
+        <p className="text-[13px] text-muted-foreground mt-0.5">
+          {stage.dealCount} {stage.dealCount === 1 ? "deal" : "deals"}
+          {" | "}
+          <span className="font-mono text-green-600">
+            {formatCurrency(stage.totalValue)}
+          </span>
+          {" total | "}
+          <span className="font-mono text-green-600">
+            {formatCurrency(stage.avgValue)}
+          </span>
+          {" avg"}
+        </p>
+        {stage.topDeals.length > 0 && (
+          <p className="text-[12px] text-muted-foreground italic mt-1 truncate">
+            {stage.topDeals.join(" · ")}
+          </p>
+        )}
+      </div>
+
+      {/* Right: edit / delete */}
       {canEdit && (
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab touch-none text-muted-foreground transition-colors duration-150 hover:text-foreground"
-          data-arcy={`stage-drag-handle-${stage.id}`}
-        >
-          <GripVertical className="size-5" />
-        </button>
-      )}
-      <div
-        className="h-6 w-6 shrink-0 rounded"
-        style={{ backgroundColor: stage.color }}
-      />
-      <span className="flex-1 text-[15px] font-semibold">{stage.name}</span>
-      {canEdit && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 pr-4">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -119,11 +168,72 @@ function SortableStageItem({
   )
 }
 
+function StageHealthBar({ stages }: { stages: StageData[] }) {
+  const totalDeals = stages.reduce((sum, s) => sum + s.dealCount, 0)
+
+  if (totalDeals === 0) {
+    return (
+      <div
+        data-arcy="stage-health-summary"
+        className="rounded-lg border bg-card p-6 shadow-sm"
+      >
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">
+          Stage Health
+        </p>
+        <div className="flex items-center justify-center py-8">
+          <p className="text-[13px] text-muted-foreground">
+            No deals in the pipeline yet.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      data-arcy="stage-health-summary"
+      className="rounded-lg border bg-card p-6 shadow-sm"
+    >
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-4">
+        Stage Health
+      </p>
+      <div className="flex h-10 w-full overflow-hidden rounded-md">
+        {stages.map((stage) => {
+          const hasDeals = stage.dealCount > 0
+          const widthPercent = hasDeals
+            ? (stage.dealCount / totalDeals) * 100
+            : 0
+
+          return (
+            <div
+              key={stage.id}
+              className={`flex items-center justify-center transition-all ${
+                hasDeals ? "" : "opacity-40"
+              }`}
+              style={{
+                backgroundColor: stage.color,
+                width: hasDeals ? `${widthPercent}%` : undefined,
+                minWidth: "48px",
+                flexShrink: hasDeals ? 1 : 0,
+              }}
+              title={`${stage.name}: ${stage.dealCount} deals`}
+            >
+              <span className="text-[11px] font-medium text-white truncate px-1.5 drop-shadow-sm">
+                {stage.name} ({stage.dealCount})
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function PipelinePage() {
   const { organizationId, role, isLoaded } = useSession()
 
+  const [pipeline, setPipeline] = useState<PipelineData | null>(null)
   const [stages, setStages] = useState<StageData[]>([])
-  const [pipelineId, setPipelineId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Add stage dialog
@@ -150,17 +260,10 @@ export default function PipelinePage() {
 
     setLoading(true)
     try {
-      const pipeline = await getPipeline(organizationId)
-      if (pipeline) {
-        setPipelineId(pipeline.id)
-        setStages(
-          pipeline.stages.map((s) => ({
-            id: s.id,
-            name: s.name,
-            color: s.color,
-            order: s.order,
-          }))
-        )
+      const data = await getPipeline(organizationId)
+      if (data) {
+        setPipeline(data)
+        setStages(data.stages)
       }
     } catch {
       // Silently handle errors
@@ -177,12 +280,12 @@ export default function PipelinePage() {
 
   async function handleAddStage(e: React.FormEvent) {
     e.preventDefault()
-    if (!pipelineId) return
+    if (!pipeline) return
 
     setAddLoading(true)
     try {
       await createStage({
-        pipelineId,
+        pipelineId: pipeline.id,
         name: addName,
         color: addColor,
       })
@@ -235,7 +338,7 @@ export default function PipelinePage() {
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
-    if (!over || active.id === over.id || !pipelineId) return
+    if (!over || active.id === over.id || !pipeline) return
 
     const oldIndex = stages.findIndex((s) => s.id === active.id)
     const newIndex = stages.findIndex((s) => s.id === over.id)
@@ -247,7 +350,7 @@ export default function PipelinePage() {
 
     try {
       await reorderStages(
-        pipelineId,
+        pipeline.id,
         reordered.map((s) => s.id)
       )
     } catch {
@@ -256,20 +359,35 @@ export default function PipelinePage() {
     }
   }
 
+  // Loading state
   if (!isLoaded || loading) {
     return (
       <div data-arcy="pipeline-page" className="space-y-6">
-        <div className="space-y-1">
-          <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-72 animate-pulse rounded bg-muted" />
+        {/* Overview skeleton */}
+        <div className="rounded-lg border bg-card p-6 shadow-sm">
+          <div className="h-8 w-48 animate-pulse rounded bg-muted mb-4" />
+          <div className="grid grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+                <div className="h-7 w-16 animate-pulse rounded bg-muted" />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="space-y-3">
+        {/* Stage cards skeleton */}
+        <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-lg border bg-muted"
+              className="h-20 animate-pulse rounded-lg border bg-muted"
             />
           ))}
+        </div>
+        {/* Health bar skeleton */}
+        <div className="rounded-lg border bg-card p-6 shadow-sm">
+          <div className="h-3 w-24 animate-pulse rounded bg-muted mb-4" />
+          <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
         </div>
       </div>
     )
@@ -303,72 +421,145 @@ export default function PipelinePage() {
 
   return (
     <div data-arcy="pipeline-page" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight">
-            Pipeline Settings
-          </h2>
+      {/* Section 1: Pipeline Overview Card */}
+      <div
+        data-arcy="pipeline-overview"
+        className="rounded-lg border bg-card p-6 shadow-sm"
+      >
+        <h2 className="font-[family-name:var(--font-display)] text-[28px] tracking-tight mb-4">
+          {pipeline?.name ?? "Pipeline"}
+        </h2>
+        <div className="grid grid-cols-3 gap-6">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Total Stages
+            </p>
+            <p className="font-[family-name:var(--font-display)] text-[24px] tracking-tight mt-1">
+              {pipeline?.totalStages ?? 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Active Deals
+            </p>
+            <p className="font-[family-name:var(--font-display)] text-[24px] tracking-tight mt-1">
+              {pipeline?.totalDeals ?? 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Pipeline Value
+            </p>
+            <p className="font-[family-name:var(--font-display)] text-[24px] tracking-tight mt-1 font-mono text-green-600">
+              {formatCurrency(pipeline?.totalValue ?? 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 2: Stage Cards */}
+      <div data-arcy="stages-section">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Stages
+          </p>
           <p className="text-[13px] text-muted-foreground">
-            Configure your pipeline stages. Drag to reorder.
+            Drag to reorder
           </p>
         </div>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger
-            render={
-              <Button data-arcy="add-stage-button" size="lg">
-                <Plus className="mr-2 size-4" />
-                Add Stage
-              </Button>
-            }
-          />
-          <DialogContent data-arcy="add-stage-form">
-            <DialogHeader>
-              <DialogTitle>Add Stage</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddStage} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="stage-name">Stage Name</Label>
+
+        {stages.length === 0 ? (
+          <div className="rounded-lg border bg-card py-16 text-center shadow-sm">
+            <p className="text-[15px] text-muted-foreground">
+              No stages configured. Add your first stage to get started.
+            </p>
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={stages.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div data-arcy="stages-list" className="space-y-2">
+                {stages.map((stage) => (
+                  <SortableStageItem
+                    key={stage.id}
+                    stage={stage}
+                    canEdit={isAdmin}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+
+      {/* Section 3: Stage Health Summary */}
+      {stages.length > 0 && <StageHealthBar stages={stages} />}
+
+      {/* Section 4: Add Stage */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogTrigger
+          render={
+            <Button data-arcy="add-stage-button" size="lg" className="w-full">
+              <Plus className="mr-2 size-4" />
+              Add Stage
+            </Button>
+          }
+        />
+        <DialogContent data-arcy="add-stage-form">
+          <DialogHeader>
+            <DialogTitle>Add Stage</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddStage} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="stage-name">Stage Name</Label>
+              <Input
+                id="stage-name"
+                data-arcy="stage-name-input"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+                placeholder="e.g. Qualification"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stage-color">Color</Label>
+              <div className="flex items-center gap-3">
                 <Input
-                  id="stage-name"
-                  data-arcy="stage-name-input"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  placeholder="e.g. Qualification"
-                  required
+                  id="stage-color"
+                  data-arcy="stage-color-input"
+                  type="color"
+                  value={addColor}
+                  onChange={(e) => setAddColor(e.target.value)}
+                  className="h-8 w-16 cursor-pointer p-1"
+                />
+                <Input
+                  value={addColor}
+                  onChange={(e) => setAddColor(e.target.value)}
+                  placeholder="#6366f1"
+                  className="flex-1 font-mono text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="stage-color">Color</Label>
-                <div className="flex items-center gap-3">
-                  <Input
-                    id="stage-color"
-                    data-arcy="stage-color-input"
-                    type="color"
-                    value={addColor}
-                    onChange={(e) => setAddColor(e.target.value)}
-                    className="h-8 w-16 cursor-pointer p-1"
-                  />
-                  <Input
-                    value={addColor}
-                    onChange={(e) => setAddColor(e.target.value)}
-                    placeholder="#6366f1"
-                    className="flex-1 font-mono text-sm"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  data-arcy="stage-submit-button"
-                  disabled={addLoading || !addName.trim()}
-                >
-                  {addLoading ? "Adding..." : "Add Stage"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                data-arcy="stage-submit-button"
+                disabled={addLoading || !addName.trim()}
+              >
+                {addLoading ? "Adding..." : "Add Stage"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit stage dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -418,38 +609,6 @@ export default function PipelinePage() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Stages list with drag-and-drop */}
-      {stages.length === 0 ? (
-        <div className="rounded-lg border bg-card py-16 text-center shadow-sm">
-          <p className="text-[15px] text-muted-foreground">
-            No stages configured. Add your first stage to get started.
-          </p>
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={stages.map((s) => s.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div data-arcy="stages-list" className="space-y-2">
-              {stages.map((stage) => (
-                <SortableStageItem
-                  key={stage.id}
-                  stage={stage}
-                  canEdit={isAdmin}
-                  onEdit={openEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
     </div>
   )
 }

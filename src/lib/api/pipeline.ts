@@ -2,7 +2,27 @@
 
 import { prisma } from "@/lib/db"
 
-export async function getPipeline(orgId: string) {
+interface StageWithStats {
+  id: string
+  name: string
+  color: string
+  order: number
+  dealCount: number
+  totalValue: number
+  avgValue: number
+  topDeals: string[]
+}
+
+interface PipelineData {
+  id: string
+  name: string
+  totalStages: number
+  totalDeals: number
+  totalValue: number
+  stages: StageWithStats[]
+}
+
+export async function getPipeline(orgId: string): Promise<PipelineData | null> {
   if (!orgId) throw new Error("Organization ID is required")
 
   const pipeline = await prisma.pipeline.findFirst({
@@ -10,11 +30,47 @@ export async function getPipeline(orgId: string) {
     include: {
       stages: {
         orderBy: { order: "asc" },
+        include: {
+          deals: {
+            select: { title: true, value: true },
+            orderBy: { value: "desc" },
+          },
+        },
       },
     },
   })
 
-  return pipeline
+  if (!pipeline) return null
+
+  let totalDeals = 0
+  let totalValue = 0
+
+  const stages: StageWithStats[] = pipeline.stages.map((s) => {
+    const dealCount = s.deals.length
+    const stageTotal = s.deals.reduce((sum, d) => sum + Number(d.value), 0)
+    totalDeals += dealCount
+    totalValue += stageTotal
+
+    return {
+      id: s.id,
+      name: s.name,
+      color: s.color,
+      order: s.order,
+      dealCount,
+      totalValue: stageTotal,
+      avgValue: dealCount > 0 ? stageTotal / dealCount : 0,
+      topDeals: s.deals.slice(0, 3).map((d) => d.title),
+    }
+  })
+
+  return {
+    id: pipeline.id,
+    name: pipeline.name,
+    totalStages: stages.length,
+    totalDeals,
+    totalValue,
+    stages,
+  }
 }
 
 export async function createStage(data: {
@@ -25,7 +81,6 @@ export async function createStage(data: {
   if (!data.pipelineId) throw new Error("Pipeline ID is required")
   if (!data.name?.trim()) throw new Error("Stage name is required")
 
-  // Get the next order value
   const lastStage = await prisma.stage.findFirst({
     where: { pipelineId: data.pipelineId },
     orderBy: { order: "desc" },
@@ -78,10 +133,7 @@ export async function reorderStages(pipelineId: string, stageIds: string[]) {
   if (!pipelineId) throw new Error("Pipeline ID is required")
   if (!stageIds.length) throw new Error("Stage IDs are required")
 
-  // Use a transaction to update all stage orders atomically
-  // First, set all to negative offsets to avoid unique constraint violations
   await prisma.$transaction(async (tx) => {
-    // Temporarily set negative orders to avoid unique constraint conflicts
     for (let i = 0; i < stageIds.length; i++) {
       await tx.stage.update({
         where: { id: stageIds[i] },
@@ -89,7 +141,6 @@ export async function reorderStages(pipelineId: string, stageIds: string[]) {
       })
     }
 
-    // Now set the actual orders
     for (let i = 0; i < stageIds.length; i++) {
       await tx.stage.update({
         where: { id: stageIds[i] },
